@@ -24,6 +24,7 @@ describe('bake rush helpers', () => {
 
     expect(order.steps[0]).toBe('base');
     expect(order.steps.at(-1)).toBe('serve');
+    expect(ingredientSteps[0]).toBe('frosting');
     expect(ingredientSteps.length).toBeGreaterThanOrEqual(3);
     expect(ingredientSteps.length).toBeLessThanOrEqual(4);
     expect(new Set(ingredientSteps).size).toBe(ingredientSteps.length);
@@ -52,6 +53,20 @@ describe('bake rush helpers', () => {
 
     expect(second).toEqual(first);
     expect(new Set(variants).size).toBeGreaterThan(1);
+  });
+
+  it('keeps generated toppings supported by a frosting layer', () => {
+    const seeds = ['support-1', 'support-2', 'support-3', 'support-4', 'support-5'];
+
+    for (const seed of seeds) {
+      const order = buildBakeRushOrder(station, 3, { seed });
+
+      expect(order.recipe[0]).toBe('frosting');
+      order.tickets.forEach((ticket) => {
+        const ingredients = ticket.steps.slice(1, -1);
+        expect(ingredients[0]).toBe('frosting');
+      });
+    }
   });
 
   it('builds short escalating judge tickets for active station play', () => {

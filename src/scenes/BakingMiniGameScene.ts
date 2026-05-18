@@ -1392,20 +1392,32 @@ export class BakingMiniGameScene extends Phaser.Scene {
     step: BakeRushStep,
     stepIndex: number
   ): { x: number; y: number; width: number; height: number; depth: number } {
+    const unsupportedDrop = this.hasFrostingFoundation(stepIndex) ? 0 : 38;
+
     switch (step) {
       case 'base':
         return { x: 640, y: 405, width: 136, height: 98, depth: 8 };
       case 'frosting':
         return { x: 640, y: 356, width: 118, height: 88, depth: 9 };
       case 'sprinkles':
-        return { x: 640, y: 326, width: 92, height: 58, depth: 11 };
+        return { x: 640, y: 326 + unsupportedDrop, width: 92, height: 58, depth: 11 };
       case 'berry':
-        return { x: 672 - Math.min(stepIndex, 2) * 10, y: 332, width: 72, height: 58, depth: 12 };
+        return { x: 672 - Math.min(stepIndex, 2) * 10, y: 332 + unsupportedDrop, width: 72, height: 58, depth: 12 };
       case 'candle':
-        return { x: 655, y: 288, width: 44, height: 78, depth: 13 };
+        return { x: 655, y: 288 + unsupportedDrop, width: 44, height: 78, depth: 13 };
       case 'serve':
         return { x: 640, y: 407, width: 86, height: 62, depth: 7 };
     }
+  }
+
+  private hasFrostingFoundation(stepIndex: number): boolean {
+    const ticket = this.currentTicket();
+
+    if (!ticket) {
+      return true;
+    }
+
+    return ticket.steps.slice(0, stepIndex + 1).includes('frosting');
   }
 
   private treatAssetKey(step: BakeRushStep): BakeoffAssetKey {

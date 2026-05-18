@@ -32,6 +32,7 @@ export interface BakeRushOrderOptions {
 }
 
 const ALL_INGREDIENTS: BakingIngredient[] = ['frosting', 'sprinkles', 'berry', 'candle'];
+const SUPPORT_LAYER: BakingIngredient = 'frosting';
 
 const hashSeed = (seed: string | number): number => {
   const text = String(seed);
@@ -85,11 +86,12 @@ const buildRecipeVariant = (
   rng: RandomSource
 ): BakingIngredient[] => {
   const difficulty = difficultyForStation(stationNumber);
-  const preferred = uniqueIngredients(station.recipe);
-  const pool = uniqueIngredients([...preferred, ...ALL_INGREDIENTS]);
+  const preferred = uniqueIngredients(station.recipe.filter((ingredient) => ingredient !== SUPPORT_LAYER));
+  const decorationPool = ALL_INGREDIENTS.filter((ingredient) => ingredient !== SUPPORT_LAYER);
+  const pool = uniqueIngredients([...preferred, ...decorationPool]);
   const recipeLength = difficulty === 1 ? 3 : difficulty === 2 ? randInt(3, 4, rng) : 4;
 
-  return shuffled(pool, rng).slice(0, recipeLength);
+  return [SUPPORT_LAYER, ...shuffled(pool, rng).slice(0, recipeLength - 1)];
 };
 
 const buildTreatCount = (stationNumber: number, rng: RandomSource): number => {
