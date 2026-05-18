@@ -72,7 +72,7 @@ export const levels: LevelDefinition[] = [
     obstacles: [
       { id: 'yy-hurdle-1', kind: 'hurdle', x: 430, y: obstacleY('hurdle', GROUND_Y), label: 'Ribbon Rail' },
       { id: 'yy-swing-1', kind: 'swing', x: 720, y: obstacleY('swing', FLOOR_1_Y), label: 'Swinging Yarn' },
-      { id: 'yy-low-1', kind: 'lowBarrier', x: 430, y: obstacleY('lowBarrier', FLOOR_2_Y), label: 'Yarn Tunnel' },
+      { id: 'yy-low-1', kind: 'lowBarrier', x: 560, y: obstacleY('lowBarrier', FLOOR_2_Y), label: 'Yarn Tunnel' },
       { id: 'yy-hurdle-2', kind: 'hurdle', x: 800, y: obstacleY('hurdle', FLOOR_3_Y), label: 'Fence Pop' },
       { id: 'yy-low-2', kind: 'lowBarrier', x: 620, y: obstacleY('lowBarrier', FLOOR_4_Y), label: 'Ribbon Crawl' },
       { id: 'yy-wall-1', kind: 'cakeWall', x: 1060, y: obstacleY('cakeWall', TOP_Y), label: 'Gift Stack' }
@@ -82,14 +82,14 @@ export const levels: LevelDefinition[] = [
       { id: 'yy-thruster-ladder-1', x: 1050, y: MID_GROUND_TO_1, value: 250, requiredAction: 'jump', kind: 'medium' },
       { id: 'yy-thruster-floor-1', x: 720, y: FLOOR_1_Y - 86, value: 250, requiredAction: 'slide', kind: 'medium' },
       { id: 'yy-thruster-ladder-2', x: 260, y: MID_1_TO_2, value: 250, requiredAction: 'jump', kind: 'medium' },
-      { id: 'yy-thruster-floor-2', x: 430, y: FLOOR_2_Y - 86, value: 250, requiredAction: 'slide', kind: 'medium' },
+      { id: 'yy-thruster-floor-2', x: 560, y: FLOOR_2_Y - 86, value: 250, requiredAction: 'slide', kind: 'medium' },
       { id: 'yy-thruster-floor-3', x: 800, y: FLOOR_3_Y - 125, value: 500, requiredAction: 'jump', kind: 'risky' },
       { id: 'yy-thruster-high-1', x: 300, y: FLOOR_4_Y - 120, value: 500, requiredAction: 'jump', kind: 'risky' },
       { id: 'yy-thruster-high-2', x: 930, y: FLOOR_4_Y - 112, value: 500, requiredAction: 'jump', kind: 'risky' },
       { id: 'yy-thruster-summit', x: 1060, y: TOP_Y - 76, value: 750, requiredAction: 'power', kind: 'risky' }
     ],
     powerBadges: [
-      { id: 'yy-rook-badge', x: 780, y: TOP_Y - 92, powerup: 'rook', label: 'Rook Dash' },
+      { id: 'yy-rook-badge', x: 470, y: FLOOR_4_Y - 104, powerup: 'rook', label: 'Rook Dash' },
       { id: 'yy-knight-badge', x: 900, y: FLOOR_1_Y - 104, powerup: 'knight', label: 'Knight Jump' }
     ],
     bakingStations: []
@@ -135,9 +135,9 @@ export const levels: LevelDefinition[] = [
     obstacles: [
       { id: 'ff-pit-1', kind: 'frostingPit', x: 430, y: obstacleY('frostingPit', GROUND_Y), label: 'Frosting Slick' },
       { id: 'ff-hurdle-1', kind: 'hurdle', x: 780, y: obstacleY('hurdle', FLOOR_1_Y), label: 'Piping Rail' },
-      { id: 'ff-low-1', kind: 'lowBarrier', x: 430, y: obstacleY('lowBarrier', FLOOR_2_Y), label: 'Mixer Arm' },
+      { id: 'ff-low-1', kind: 'lowBarrier', x: 560, y: obstacleY('lowBarrier', FLOOR_2_Y), label: 'Mixer Arm' },
       { id: 'ff-swing-1', kind: 'swing', x: 830, y: obstacleY('swing', FLOOR_3_Y), label: 'Rolling Pin' },
-      { id: 'ff-low-2', kind: 'lowBarrier', x: 610, y: obstacleY('lowBarrier', FLOOR_4_Y), label: 'Frosting Arch' },
+      { id: 'ff-low-2', kind: 'lowBarrier', x: 660, y: obstacleY('lowBarrier', FLOOR_4_Y), label: 'Frosting Arch' },
       { id: 'ff-wall-1', kind: 'cakeWall', x: 1050, y: obstacleY('cakeWall', TOP_Y), label: 'Bakery Gate' }
     ],
     pointThrusters: [
@@ -145,13 +145,13 @@ export const levels: LevelDefinition[] = [
       { id: 'ff-thruster-ladder-1', x: 1040, y: MID_GROUND_TO_1, value: 250, requiredAction: 'jump', kind: 'medium' },
       { id: 'ff-thruster-floor-1', x: 780, y: FLOOR_1_Y - 125, value: 500, requiredAction: 'jump', kind: 'risky' },
       { id: 'ff-thruster-bake-1', x: 560, y: FLOOR_2_Y - 118, value: 250, requiredAction: 'jump', kind: 'medium' },
-      { id: 'ff-thruster-floor-2', x: 430, y: FLOOR_2_Y - 86, value: 250, requiredAction: 'slide', kind: 'medium' },
+      { id: 'ff-thruster-floor-2', x: 560, y: FLOOR_2_Y - 86, value: 250, requiredAction: 'slide', kind: 'medium' },
       { id: 'ff-thruster-floor-3', x: 830, y: FLOOR_3_Y - 86, value: 500, requiredAction: 'slide', kind: 'risky' },
       { id: 'ff-thruster-bake-2', x: 720, y: FLOOR_4_Y - 120, value: 500, requiredAction: 'jump', kind: 'risky' },
       { id: 'ff-thruster-summit', x: 1050, y: TOP_Y - 76, value: 750, requiredAction: 'power', kind: 'risky' }
     ],
     powerBadges: [
-      { id: 'ff-knight-badge', x: 800, y: TOP_Y - 92, powerup: 'knight', label: 'Knight Jump' },
+      { id: 'ff-knight-badge', x: 860, y: FLOOR_4_Y - 104, powerup: 'knight', label: 'Knight Jump' },
       { id: 'ff-bishop-badge', x: 900, y: FLOOR_1_Y - 104, powerup: 'bishop', label: 'Bishop Leap' }
     ],
     bakingStations: []
@@ -196,16 +196,16 @@ export const levels: LevelDefinition[] = [
     },
     obstacles: [
       { id: 'bt-hurdle-1', kind: 'hurdle', x: 420, y: obstacleY('hurdle', GROUND_Y), label: 'Candle Hop' },
-      { id: 'bt-low-1', kind: 'lowBarrier', x: 760, y: obstacleY('lowBarrier', FLOOR_1_Y), label: 'Banner Crawl' },
+      { id: 'bt-low-1', kind: 'lowBarrier', x: 720, y: obstacleY('lowBarrier', FLOOR_1_Y), label: 'Banner Crawl' },
       { id: 'bt-pit-1', kind: 'frostingPit', x: 450, y: obstacleY('frostingPit', FLOOR_2_Y), label: 'Sprinkle Slick' },
       { id: 'bt-swing-1', kind: 'swing', x: 820, y: obstacleY('swing', FLOOR_3_Y), label: 'Confetti Sweeper' },
-      { id: 'bt-low-2', kind: 'lowBarrier', x: 550, y: obstacleY('lowBarrier', FLOOR_4_Y), label: 'Crown Crawl' },
+      { id: 'bt-low-2', kind: 'lowBarrier', x: 700, y: obstacleY('lowBarrier', FLOOR_4_Y), label: 'Crown Crawl' },
       { id: 'bt-wall-1', kind: 'cakeWall', x: 1080, y: obstacleY('cakeWall', TOP_Y), label: 'Crown Wall' }
     ],
     pointThrusters: [
       { id: 'bt-thruster-bottom-1', x: 420, y: GROUND_Y - 150, value: 250, requiredAction: 'jump', kind: 'medium' },
       { id: 'bt-thruster-ladder-1', x: 1050, y: MID_GROUND_TO_1, value: 500, requiredAction: 'jump', kind: 'risky' },
-      { id: 'bt-thruster-floor-1', x: 760, y: FLOOR_1_Y - 86, value: 500, requiredAction: 'slide', kind: 'risky' },
+      { id: 'bt-thruster-floor-1', x: 720, y: FLOOR_1_Y - 86, value: 500, requiredAction: 'slide', kind: 'risky' },
       { id: 'bt-thruster-ladder-2', x: 250, y: MID_1_TO_2, value: 500, requiredAction: 'jump', kind: 'risky' },
       { id: 'bt-thruster-floor-2', x: 450, y: FLOOR_2_Y - 125, value: 500, requiredAction: 'jump', kind: 'risky' },
       { id: 'bt-thruster-floor-3', x: 820, y: FLOOR_3_Y - 86, value: 750, requiredAction: 'slide', kind: 'risky' },
@@ -214,7 +214,7 @@ export const levels: LevelDefinition[] = [
       { id: 'bt-thruster-summit', x: 1080, y: TOP_Y - 76, value: 1000, requiredAction: 'power', kind: 'multiplier' }
     ],
     powerBadges: [
-      { id: 'bt-queen-badge', x: 830, y: TOP_Y - 92, powerup: 'queen', label: 'Queen Shield' },
+      { id: 'bt-queen-badge', x: 500, y: FLOOR_4_Y - 104, powerup: 'queen', label: 'Queen Shield' },
       { id: 'bt-bishop-badge', x: 900, y: FLOOR_1_Y - 104, powerup: 'bishop', label: 'Bishop Leap' }
     ],
     bakingStations: []

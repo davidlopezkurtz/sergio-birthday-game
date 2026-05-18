@@ -89,6 +89,12 @@ const COURSE_BAND_ALPHA = 0.16;
 const POWER_BADGE_PICKUP_RADIUS = 92;
 const KNIGHT_PLATFORM_X_OFFSET = 145;
 const KNIGHT_TRAVEL_MS = 420;
+const ROOK_POWER_DASH_DISTANCE = 420;
+const BISHOP_POWER_DASH_DISTANCE = 320;
+const QUEEN_POWER_CHARGE_DISTANCE = 520;
+const QUEEN_POWER_CHARGE_MS = 560;
+const POWER_SWEEP_X_PADDING = 110;
+const POWER_SWEEP_Y_PADDING = 220;
 const PICKUP_ASSET_BY_ACTION: Record<ActionType, AssetKey> = {
   jump: 'treat-cupcake-base',
   slide: 'treat-donut-base',
@@ -439,14 +445,17 @@ export class PlayScene extends Phaser.Scene {
       this.groundY + 82,
       this.worldWidth + 200,
       166,
-      this.level.palette.ground,
-      0.74
+      isTower ? 0x5a287a : this.level.palette.ground,
+      isTower ? 0.9 : 0.74
     ).setDepth(2);
-    this.add.rectangle(this.worldWidth / 2, this.groundY + 132, this.worldWidth + 200, 34, 0x102033, 0.2).setDepth(2.5);
+    this.add.rectangle(this.worldWidth / 2, this.groundY + 132, this.worldWidth + 200, 34, 0x102033, isTower ? 0.34 : 0.2).setDepth(2.5);
     if (isTower) {
       this.add
-        .rectangle(this.worldWidth / 2, this.groundY + 31, this.worldWidth + 200, 54, 0x6f358f, 0.64)
+        .rectangle(this.worldWidth / 2, this.groundY + 34, this.worldWidth + 200, 68, 0x7e3fa5, 0.78)
         .setDepth(3.2);
+      this.add
+        .rectangle(this.worldWidth / 2, this.groundY + 74, this.worldWidth + 200, 28, 0x3a1856, 0.62)
+        .setDepth(3.4);
     }
     if (this.textures.exists(floorEdgeKey)) {
       this.add
@@ -517,7 +526,8 @@ export class PlayScene extends Phaser.Scene {
       const edgeHeight = this.textures.exists(floorEdgeKey) ? Math.min(52, assetsByKey[floorEdgeKey].height) : 12;
       this.add.rectangle(platform.x, platform.y + platformHeight + 14, platform.width + 36, 28, 0x102033, 0.2).setDepth(2);
       if (isTower) {
-        this.add.rectangle(platform.x, platform.y + 32, platform.width + 28, 58, 0x6f358f, 0.62).setDepth(2.8);
+        this.add.rectangle(platform.x, platform.y + 34, platform.width + 34, 70, 0x7e3fa5, 0.78).setDepth(2.8);
+        this.add.rectangle(platform.x, platform.y + 76, platform.width + 34, 30, 0x3a1856, 0.58).setDepth(2.9);
       }
       const body = this.add
         .tileSprite(
@@ -538,11 +548,14 @@ export class PlayScene extends Phaser.Scene {
           platform.x,
           platform.y + 1,
           platform.width + 12,
-          isTower ? 6 : 4,
+          isTower ? 8 : 4,
           isTower ? 0xffd23f : 0x102033,
-          isTower ? 0.8 : 0.25
+          isTower ? 0.88 : 0.25
         )
         .setDepth(6);
+      if (isTower) {
+        this.add.rectangle(platform.x, platform.y + 10, platform.width + 6, 4, 0xffffff, 0.36).setDepth(6.1);
+      }
       if (!edge) {
         this.add.rectangle(platform.x, platform.y + 4, platform.width, edgeHeight, 0xffffff, 0.7).setDepth(4);
       }
@@ -1005,6 +1018,8 @@ export class PlayScene extends Phaser.Scene {
 
     const power = this.heldPower;
     const powerDirection = this.facingDirection;
+    const powerStartX = this.cat.x;
+    const powerStartY = this.cat.y;
     this.lastPowerAt = this.elapsedMs;
     this.resolveNearbyObstaclesForAction('power');
     this.collectNearbyThrustersForAction('power');
@@ -1018,30 +1033,46 @@ export class PlayScene extends Phaser.Scene {
     this.updatePowerAvailabilityVisual();
 
     switch (power) {
-      case 'rook':
-        this.cat.x = Phaser.Math.Clamp(this.cat.x + 180 * powerDirection, this.startX, this.worldWidth - 40);
+      case 'rook': {
+        const targetX = Phaser.Math.Clamp(
+          powerStartX + ROOK_POWER_DASH_DISTANCE * powerDirection,
+          this.startX,
+          this.worldWidth - 40
+        );
+        this.cat.x = targetX;
         this.cat.setFlipX(powerDirection < 0);
+        this.clearPowerCorridor(powerStartX, targetX, powerStartY, this.cat.y);
         this.flashCat(0xffd23f);
         break;
+      }
       case 'knight':
         if (!this.launchKnightToNextPlatform(powerDirection)) {
           this.currentSurfaceY = this.catSurfaceY();
           this.verticalVelocity = CAT_POWER_JUMP_VELOCITY;
           this.onGround = false;
           this.climbing = false;
+          this.clearPowerCorridor(powerStartX, this.cat.x, powerStartY, this.cat.y - 240);
         }
         this.flashCat(0x27b6a5);
         break;
-      case 'bishop':
+      case 'bishop': {
+        const targetX = Phaser.Math.Clamp(
+          powerStartX + BISHOP_POWER_DASH_DISTANCE * powerDirection,
+          this.startX,
+          this.worldWidth - 40
+        );
         this.currentSurfaceY = this.catSurfaceY();
         this.verticalVelocity = CAT_BISHOP_JUMP_VELOCITY;
         this.onGround = false;
         this.climbing = false;
-        this.cat.x = Phaser.Math.Clamp(this.cat.x + 90 * powerDirection, this.startX, this.worldWidth - 40);
+        this.cat.x = targetX;
         this.cat.setFlipX(powerDirection < 0);
+        this.clearPowerCorridor(powerStartX, targetX, powerStartY, this.cat.y - 260);
         this.flashCat(0x6f64d9);
         break;
+      }
       case 'queen':
+        this.launchQueenCharge(powerDirection, powerStartX, powerStartY);
         this.flashCat(0xf05f73);
         break;
     }
@@ -1062,6 +1093,8 @@ export class PlayScene extends Phaser.Scene {
 
   private launchKnightToNextPlatform(direction: -1 | 1): boolean {
     const catSurfaceY = this.catSurfaceY();
+    const startX = this.cat.x;
+    const startY = this.cat.y;
     const targetPlatform = this.level.platforms
       .filter((platform) => platform.y < catSurfaceY - 90)
       .sort((a, b) => b.y - a.y)[0];
@@ -1090,6 +1123,7 @@ export class PlayScene extends Phaser.Scene {
       y: targetY,
       duration: KNIGHT_TRAVEL_MS,
       ease: 'Cubic.easeOut',
+      onUpdate: () => this.clearPowerCorridor(startX, this.cat.x, startY, this.cat.y),
       onComplete: () => {
         this.currentSurfaceY = targetPlatform.y;
         this.cat.y = targetY;
@@ -1097,11 +1131,37 @@ export class PlayScene extends Phaser.Scene {
         this.verticalVelocity = 0;
         this.powerTraveling = false;
         this.restoreMovementCatPose();
+        this.clearPowerCorridor(startX, targetX, startY, targetY);
         this.collectNearbyThrustersForAction('power');
       }
     });
 
     return true;
+  }
+
+  private launchQueenCharge(direction: -1 | 1, startX: number, startY: number): void {
+    const targetX = Phaser.Math.Clamp(startX + QUEEN_POWER_CHARGE_DISTANCE * direction, this.startX, this.worldWidth - 40);
+
+    this.powerTraveling = true;
+    this.climbing = false;
+    this.sliding = false;
+    this.verticalVelocity = 0;
+    this.setCatPose('catJumpFrame4');
+    this.cat.setFlipX(direction < 0);
+
+    this.tweens.killTweensOf(this.cat);
+    this.tweens.add({
+      targets: this.cat,
+      x: targetX,
+      duration: QUEEN_POWER_CHARGE_MS,
+      ease: 'Cubic.easeOut',
+      onUpdate: () => this.clearPowerCorridor(startX, this.cat.x, startY, this.cat.y),
+      onComplete: () => {
+        this.powerTraveling = false;
+        this.clearPowerCorridor(startX, targetX, startY, this.cat.y);
+        this.restoreMovementCatPose();
+      }
+    });
   }
 
   private checkPowerBadgeOverlaps(): void {
@@ -1380,6 +1440,9 @@ export class PlayScene extends Phaser.Scene {
 
   private handleObstacleOverlap(obstacle: ObstacleDefinition): void {
     if (this.invincible || this.obstacleResolvedIds.has(obstacle.id)) {
+      if (this.invincible) {
+        this.clearObstacleWithPower(obstacle);
+      }
       return;
     }
 
@@ -1505,8 +1568,12 @@ export class PlayScene extends Phaser.Scene {
       }
 
       if (this.actionMatchesObstacle(action, obstacle.definition.kind)) {
-        this.obstacleResolvedIds.add(obstacle.definition.id);
-        this.awardObstacleClear(obstacle.definition);
+        if (action === 'power') {
+          this.clearObstacleWithPower(obstacle.definition);
+        } else {
+          this.obstacleResolvedIds.add(obstacle.definition.id);
+          this.awardObstacleClear(obstacle.definition);
+        }
         return;
       }
     }
@@ -1514,7 +1581,7 @@ export class PlayScene extends Phaser.Scene {
 
   private actionMatchesObstacle(action: ActionType, kind: ObstacleDefinition['kind']): boolean {
     if (action === 'power') {
-      return kind === 'cakeWall';
+      return true;
     }
 
     if (action === 'slide') {
@@ -1522,6 +1589,44 @@ export class PlayScene extends Phaser.Scene {
     }
 
     return kind === 'hurdle' || kind === 'frostingPit';
+  }
+
+  private clearPowerCorridor(startX: number, endX: number, startY: number, endY: number): void {
+    const minX = Math.min(startX, endX) - POWER_SWEEP_X_PADDING;
+    const maxX = Math.max(startX, endX) + POWER_SWEEP_X_PADDING;
+    const minY = Math.min(startY, endY) - POWER_SWEEP_Y_PADDING;
+    const maxY = Math.max(startY, endY) + POWER_SWEEP_Y_PADDING;
+
+    for (const obstacle of this.obstacles) {
+      if (
+        obstacle.sprite.x >= minX &&
+        obstacle.sprite.x <= maxX &&
+        obstacle.sprite.y >= minY &&
+        obstacle.sprite.y <= maxY
+      ) {
+        this.clearObstacleWithPower(obstacle.definition);
+      }
+    }
+
+    for (const thruster of this.thrusters) {
+      if (
+        thruster.definition.x >= minX &&
+        thruster.definition.x <= maxX &&
+        thruster.definition.y >= minY &&
+        thruster.definition.y <= maxY
+      ) {
+        this.collectThruster(thruster);
+      }
+    }
+  }
+
+  private clearObstacleWithPower(obstacle: ObstacleDefinition): void {
+    if (this.obstacleResolvedIds.has(obstacle.id)) {
+      return;
+    }
+
+    this.obstacleResolvedIds.add(obstacle.id);
+    this.awardObstacleClear(obstacle, 'Power smash!');
   }
 
   private awardObstacleClear(obstacle: ObstacleDefinition, label = 'Clear!'): void {
@@ -1582,10 +1687,18 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private actionMatchesThruster(action: ActionType, thruster: PointThrusterDefinition): boolean {
+    if (action === 'power') {
+      return true;
+    }
+
     return !thruster.requiredAction || thruster.requiredAction === action;
   }
 
   private thrusterActionIsActive(thruster: PointThrusterDefinition): boolean {
+    if (this.activePower) {
+      return true;
+    }
+
     switch (thruster.requiredAction) {
       case undefined:
         return true;

@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { assetManifest, courseBackgroundAssetKeys } from '../src/assets/assetManifest';
 import { levels } from '../src/data/levels';
 
+const LOW_BARRIER_SURFACE_OFFSET = 142;
+const MIN_CRAWL_RUNWAY_FROM_LADDER = 260;
+const MIN_POWER_BADGE_DISTANCE_FROM_FINISH_Y = 150;
+
 describe('level authoring', () => {
   it('places explicit power badges before each power obstacle', () => {
     for (const level of levels) {
@@ -10,9 +14,7 @@ describe('level authoring', () => {
 
       const powerObstacles = level.obstacles.filter((obstacle) => obstacle.kind === 'cakeWall');
       for (const obstacle of powerObstacles) {
-        const badgeBeforeWall = level.powerBadges.some(
-          (badge) => badge.x < obstacle.x && Math.abs(badge.y - (obstacle.y ?? 0)) <= 140
-        );
+        const badgeBeforeWall = level.powerBadges.some((badge) => badge.x < obstacle.x);
 
         expect(badgeBeforeWall).toBe(true);
       }
@@ -25,6 +27,34 @@ describe('level authoring', () => {
 
       expect(level.powerBadges.some((badge) => badge.y > midpointY)).toBe(true);
       expect(level.powerBadges.some((badge) => badge.y < midpointY)).toBe(true);
+    }
+  });
+
+  it('keeps power badges off the final top platform so they can be used before the finish', () => {
+    for (const level of levels) {
+      const finishY = level.finish?.y ?? 0;
+
+      for (const badge of level.powerBadges) {
+        expect(badge.y).toBeGreaterThan(finishY + MIN_POWER_BADGE_DISTANCE_FROM_FINISH_Y);
+      }
+    }
+  });
+
+  it('keeps crawl obstacles away from ladder exits', () => {
+    for (const level of levels) {
+      const ladders = level.ladders ?? [];
+      const crawlObstacles = level.obstacles.filter((obstacle) => obstacle.kind === 'lowBarrier');
+
+      for (const obstacle of crawlObstacles) {
+        const obstacleSurfaceY = (obstacle.y ?? 0) + LOW_BARRIER_SURFACE_OFFSET;
+        const ladderOnSameSurface = ladders.find((ladder) => Math.abs(ladder.yTop - obstacleSurfaceY) <= 2);
+
+        if (!ladderOnSameSurface) {
+          continue;
+        }
+
+        expect(Math.abs(obstacle.x - ladderOnSameSurface.x)).toBeGreaterThanOrEqual(MIN_CRAWL_RUNWAY_FROM_LADDER);
+      }
     }
   });
 
