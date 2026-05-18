@@ -1,0 +1,30 @@
+{
+  "coordinateSystem": "normalized sprite local coordinates, origin at top-left",
+  "trayAnchor": {
+    "x": 0.5,
+    "y": 0.72,
+    "note": "Place this point at the visual center of bakeoff-tray-empty's pastry surface."
+  },
+  "pieces": {
+    "treat-cupcake-base": { "anchor": { "x": 0.5, "y": 0.9 }, "stackOffset": { "x": 0, "y": 0 }, "role": "base" },
+    "treat-cake-base": { "anchor": { "x": 0.5, "y": 0.86 }, "stackOffset": { "x": 0, "y": 0 }, "role": "base" },
+    "treat-donut-base": { "anchor": { "x": 0.5, "y": 0.82 }, "stackOffset": { "x": 0, "y": 0 }, "role": "base" },
+    "treat-frosting": { "anchor": { "x": 0.5, "y": 0.86 }, "stackOffset": { "x": 0, "y": -42 }, "role": "layer" },
+    "treat-sprinkles": { "anchor": { "x": 0.5, "y": 0.55 }, "stackOffset": { "x": 0, "y": -58 }, "role": "topping" },
+    "treat-berry": { "anchor": { "x": 0.5, "y": 0.82 }, "stackOffset": { "x": 0, "y": -62 }, "role": "topping" },
+    "treat-candle": { "anchor": { "x": 0.5, "y": 0.94 }, "stackOffset": { "x": 0, "y": -88 }, "role": "decoration" },
+    "treat-star-topper": { "anchor": { "x": 0.5, "y": 0.92 }, "stackOffset": { "x": 0, "y": -94 }, "role": "decoration" }
+  },
+  "rackSlots": {
+    "completed-treat-rack": [
+      { "x": 0.23, "y": 0.52 },
+      { "x": 0.5, "y": 0.52 },
+      { "x": 0.77, "y": 0.52 }
+    ],
+    "judge-rack": [
+      { "x": 0.23, "y": 0.62 },
+      { "x": 0.5, "y": 0.62 },
+      { "x": 0.77, "y": 0.62 }
+    ]
+  }
+}

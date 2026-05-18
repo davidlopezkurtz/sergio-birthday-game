@@ -81,6 +81,185 @@ import swingBakeryHighDpiUrl from './images/swing-bakery-2x.png';
 import swingTowerUrl from './images/swing-tower.png';
 import swingTowerHighDpiUrl from './images/swing-tower-2x.png';
 
+const imageUrls = import.meta.glob(
+  [
+    './images/answer-card*.png',
+    './images/audience-silhouette*.png',
+    './images/bakeoff*.png',
+    './images/completed-treat-rack*.png',
+    './images/correction-poof*.png',
+    './images/frosting-apply*.png',
+    './images/judge*.png',
+    './images/math-*.png',
+    './images/mixing-bowl*.png',
+    './images/multiplier-badge*.png',
+    './images/perfect-bake-badge*.png',
+    './images/perfect-sparkle*.png',
+    './images/recipe-ticket*.png',
+    './images/serve*.png',
+    './images/sprinkle-burst*.png',
+    './images/station*.png',
+    './images/ticket-*.png',
+    './images/tray-arrive*.png',
+    './images/treat*.png'
+  ],
+  {
+    eager: true,
+    query: '?url',
+    import: 'default'
+  }
+) as Record<string, string>;
+
+const audioUrls = import.meta.glob('./audio/*.wav', {
+  eager: true,
+  query: '?url',
+  import: 'default'
+}) as Record<string, string>;
+
+const imageAssetUrl = (key: string): string | undefined => imageUrls[`./images/${key}.png`];
+const audioAssetUrl = (key: string): string | undefined => audioUrls[`./audio/${key}.wav`];
+
+export const bakeoffAssetKeys = [
+  'bakeoff-bg-yarn',
+  'bakeoff-bg-bakery',
+  'bakeoff-bg-tower',
+  'bakeoff-bg',
+  'bakeoff-counter',
+  'bakeoff-conveyor',
+  'bakeoff-tray-empty',
+  'bakeoff-tray-complete',
+  'tray-arrive-1',
+  'tray-arrive-2',
+  'tray-arrive-3',
+  'serve-plate',
+  'judge-ticket',
+  'judge-ticket-perfect',
+  'judge-ticket-correction',
+  'recipe-ticket',
+  'answer-card',
+  'answer-card-correct',
+  'answer-card-wrong',
+  'answer-card-fraction',
+  'bakeoff-timer-badge',
+  'bakeoff-speed-meter',
+  'bakeoff-score-badge',
+  'perfect-bake-badge',
+  'multiplier-badge-base',
+  'multiplier-badge-12',
+  'multiplier-badge-15',
+  'multiplier-badge-20',
+  'station-base',
+  'station-base-pressed',
+  'station-base-correct',
+  'station-base-wrong',
+  'station-base-disabled',
+  'station-frosting',
+  'station-frosting-pressed',
+  'station-frosting-correct',
+  'station-frosting-wrong',
+  'station-frosting-disabled',
+  'station-sprinkles',
+  'station-sprinkles-pressed',
+  'station-sprinkles-correct',
+  'station-sprinkles-wrong',
+  'station-sprinkles-disabled',
+  'station-berry',
+  'station-berry-pressed',
+  'station-berry-correct',
+  'station-berry-wrong',
+  'station-berry-disabled',
+  'station-candle',
+  'station-candle-pressed',
+  'station-candle-correct',
+  'station-candle-wrong',
+  'station-candle-disabled',
+  'station-mix',
+  'station-mix-pressed',
+  'station-mix-correct',
+  'station-mix-wrong',
+  'station-mix-disabled',
+  'station-frost',
+  'station-frost-pressed',
+  'station-frost-correct',
+  'station-frost-wrong',
+  'station-frost-disabled',
+  'station-decorate',
+  'station-decorate-pressed',
+  'station-decorate-correct',
+  'station-decorate-wrong',
+  'station-decorate-disabled',
+  'station-serve',
+  'station-serve-pressed',
+  'station-serve-correct',
+  'station-serve-wrong',
+  'station-serve-disabled',
+  'station-button-frame',
+  'station-button-frame-pressed',
+  'station-button-frame-correct',
+  'station-button-frame-wrong',
+  'station-button-frame-disabled',
+  'station-current-glow',
+  'station-next-ring',
+  'treat-cupcake-base',
+  'treat-cake-base',
+  'treat-donut-base',
+  'treat-frosting',
+  'treat-sprinkles',
+  'treat-berry',
+  'treat-candle',
+  'treat-star-topper',
+  'frosting-apply-1',
+  'frosting-apply-2',
+  'sprinkle-burst-1',
+  'sprinkle-burst-2',
+  'perfect-sparkle-1',
+  'perfect-sparkle-2',
+  'correction-poof-1',
+  'correction-poof-2',
+  'judge-cat',
+  'judge-cat-happy',
+  'judge-cat-thinking',
+  'judge-cupcake',
+  'bakeoff-mixer-1',
+  'bakeoff-mixer-2',
+  'bakeoff-oven',
+  'bakeoff-bell',
+  'bakeoff-spotlight',
+  'bakeoff-confetti-1',
+  'bakeoff-confetti-2',
+  'audience-silhouette',
+  'mixing-bowl-1',
+  'mixing-bowl-2',
+  'mixing-bowl-3',
+  'completed-treat-rack',
+  'judge-rack',
+  'ticket-stack',
+  'ticket-complete-stamp',
+  'ticket-next-tab',
+  'ticket-priority-star',
+  'serve-meter-track',
+  'serve-meter-sweet-zone',
+  'serve-meter-marker',
+  'serve-hit-burst',
+  'serve-miss-wobble',
+  'math-treat-count-card',
+  'math-topping-chip',
+  'math-batch-card'
+] as const;
+
+export type BakeoffAssetKey = (typeof bakeoffAssetKeys)[number];
+
+export const bakeoffAudioKeys = [
+  'sfx-tray-slide',
+  'sfx-station-correct',
+  'sfx-station-wrong',
+  'sfx-serve-green',
+  'sfx-serve-miss',
+  'sfx-multiplier-reveal'
+] as const;
+
+export type BakeoffAudioKey = (typeof bakeoffAudioKeys)[number];
+
 export type AssetKey =
   | 'cat'
   | 'catRun1'
@@ -125,17 +304,169 @@ export type AssetKey =
   | 'level-birthday-beast-tower-bg'
   | 'platform-yarn'
   | 'platform-bakery'
-  | 'platform-tower';
+  | 'platform-tower'
+  | BakeoffAssetKey;
 
 export interface AssetManifestEntry {
   key: AssetKey;
   description: string;
   width: number;
   height: number;
-  kind: 'Hero' | 'Obstacle' | 'Power' | 'Score' | 'Background' | 'Platform';
+  kind: 'Hero' | 'Obstacle' | 'Power' | 'Score' | 'Background' | 'Platform' | 'BakeOff';
   url?: string;
   highDpiUrl?: string;
 }
+
+export interface AudioManifestEntry {
+  key: BakeoffAudioKey;
+  description: string;
+  url?: string;
+}
+
+const bakeoffAssetSize = (key: BakeoffAssetKey): { width: number; height: number } => {
+  if (key.startsWith('bakeoff-bg')) {
+    return { width: 1280, height: 720 };
+  }
+
+  if (key === 'bakeoff-counter' || key === 'bakeoff-conveyor') {
+    return { width: 1024, height: 220 };
+  }
+
+  if (key.startsWith('tray-arrive') || key.startsWith('bakeoff-tray')) {
+    return { width: 360, height: 180 };
+  }
+
+  if (key === 'judge-ticket' || key === 'judge-ticket-perfect' || key === 'judge-ticket-correction' || key === 'recipe-ticket') {
+    return { width: 480, height: 240 };
+  }
+
+  if (key.startsWith('answer-card')) {
+    return { width: 200, height: 120 };
+  }
+
+  if (key === 'bakeoff-timer-badge' || key === 'bakeoff-speed-meter') {
+    return { width: 260, height: 72 };
+  }
+
+  if (key === 'bakeoff-score-badge' || key === 'perfect-bake-badge') {
+    return { width: 240, height: key === 'perfect-bake-badge' ? 140 : 120 };
+  }
+
+  if (key.startsWith('multiplier-badge')) {
+    return { width: 180, height: 120 };
+  }
+
+  if (key.startsWith('station-button-frame')) {
+    return { width: 180, height: 112 };
+  }
+
+  if (key.startsWith('station-')) {
+    return { width: key === 'station-current-glow' || key === 'station-next-ring' ? 180 : 128, height: key === 'station-current-glow' || key === 'station-next-ring' ? 180 : 128 };
+  }
+
+  if (key === 'treat-candle') {
+    return { width: 96, height: 160 };
+  }
+
+  if (key === 'treat-star-topper') {
+    return { width: 96, height: 120 };
+  }
+
+  if (key === 'treat-frosting') {
+    return { width: 160, height: 120 };
+  }
+
+  if (key === 'treat-sprinkles') {
+    return { width: 160, height: 100 };
+  }
+
+  if (key === 'treat-berry') {
+    return { width: 140, height: 110 };
+  }
+
+  if (key.startsWith('treat-')) {
+    return { width: 220, height: 160 };
+  }
+
+  if (key === 'completed-treat-rack') {
+    return { width: 360, height: 150 };
+  }
+
+  if (key === 'judge-rack') {
+    return { width: 360, height: 220 };
+  }
+
+  if (key === 'ticket-stack') {
+    return { width: 260, height: 180 };
+  }
+
+  if (key === 'ticket-complete-stamp') {
+    return { width: 160, height: 160 };
+  }
+
+  if (key === 'ticket-next-tab') {
+    return { width: 160, height: 96 };
+  }
+
+  if (key === 'ticket-priority-star') {
+    return { width: 128, height: 128 };
+  }
+
+  if (key === 'serve-meter-track') {
+    return { width: 360, height: 72 };
+  }
+
+  if (key === 'serve-meter-sweet-zone') {
+    return { width: 180, height: 72 };
+  }
+
+  if (key === 'serve-meter-marker') {
+    return { width: 72, height: 160 };
+  }
+
+  if (key === 'serve-hit-burst' || key === 'serve-miss-wobble') {
+    return { width: 220, height: 220 };
+  }
+
+  if (key === 'math-batch-card') {
+    return { width: 420, height: 180 };
+  }
+
+  if (key === 'math-treat-count-card') {
+    return { width: 220, height: 160 };
+  }
+
+  if (key === 'math-topping-chip') {
+    return { width: 128, height: 128 };
+  }
+
+  if (key === 'audience-silhouette') {
+    return { width: 640, height: 160 };
+  }
+
+  if (key.startsWith('bakeoff-confetti')) {
+    return { width: 256, height: 256 };
+  }
+
+  if (key.startsWith('judge-') || key === 'bakeoff-spotlight') {
+    return { width: 220, height: 220 };
+  }
+
+  return { width: 180, height: 180 };
+};
+
+const bakeoffAssetManifest: AssetManifestEntry[] = bakeoffAssetKeys.map((key) => {
+  const size = bakeoffAssetSize(key);
+  return {
+    key,
+    description: `Bake-off rush asset: ${key}`,
+    width: size.width,
+    height: size.height,
+    kind: 'BakeOff',
+    url: imageAssetUrl(key),
+    highDpiUrl: imageAssetUrl(`${key}-2x`)
+  };
+});
 
 export const assetManifest: AssetManifestEntry[] = [
   {
@@ -533,12 +864,25 @@ export const assetManifest: AssetManifestEntry[] = [
     kind: 'Platform',
     url: platformTowerUrl,
     highDpiUrl: platformTowerHighDpiUrl
-  }
+  },
+  ...bakeoffAssetManifest
 ];
+
+export const audioManifest: AudioManifestEntry[] = bakeoffAudioKeys.map((key) => ({
+  key,
+  description: `Bake-off rush sound: ${key}`,
+  url: audioAssetUrl(key)
+}));
 
 export const assetsByKey = Object.fromEntries(
   assetManifest.map((asset) => [asset.key, asset])
 ) as Record<AssetKey, AssetManifestEntry>;
 
+export const audioByKey = Object.fromEntries(
+  audioManifest.map((asset) => [asset.key, asset])
+) as Record<BakeoffAudioKey, AudioManifestEntry>;
+
 export const resolveAssetUrl = (asset: AssetManifestEntry, devicePixelRatio = 1): string | undefined =>
   devicePixelRatio > 1 && asset.highDpiUrl ? asset.highDpiUrl : asset.url;
+
+export const resolveAudioUrl = (asset: AudioManifestEntry): string | undefined => asset.url;
