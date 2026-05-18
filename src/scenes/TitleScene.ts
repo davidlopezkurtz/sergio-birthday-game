@@ -48,7 +48,7 @@ export class TitleScene extends Phaser.Scene {
       .text(
         640,
         224,
-        "Collect Point Thrusters, build combos, beat math gates, and chase Sergio's biggest birthday score.",
+        "Climb ladders, jump and duck through hazards, collect pastries, then bake for a score multiplier.",
         {
           fontFamily: 'Arial, sans-serif',
           fontSize: '25px',

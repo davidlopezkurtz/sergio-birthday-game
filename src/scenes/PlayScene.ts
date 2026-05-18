@@ -1,14 +1,10 @@
 import Phaser from 'phaser';
 import { assetsByKey, resolveAssetUrl, type AssetKey } from '../assets/assetManifest';
 import { levels } from '../data/levels';
-import { calculateBakingAward, isBakingStationResult } from '../game/baking';
-import { generateProblemForLevel } from '../game/math';
-import { isMathGateResult } from '../game/mathGate';
+import { isBakingStationResult } from '../game/baking';
 import {
-  FIRST_TRY_MATH_POINTS,
   OBSTACLE_CLEAR_POINTS,
   OBSTACLE_HIT_PENALTY_POINTS,
-  RETRY_MATH_POINTS,
   buildScoreSummary,
   calculateAppliedPenalty,
   calculateScoreFromLedger,
@@ -19,6 +15,7 @@ import {
 import type {
   ActionType,
   BakingStationDefinition,
+  BakingStationResult,
   CourseLadderDefinition,
   CoursePlatformDefinition,
   LevelDefinition,
@@ -50,14 +47,8 @@ interface ThrusterObject {
   definition: PointThrusterDefinition;
   ring: Phaser.GameObjects.Arc;
   core: Phaser.GameObjects.Arc;
+  sprinkles: Phaser.GameObjects.Arc[];
   valueText: Phaser.GameObjects.Text;
-}
-
-interface BakingStationObject {
-  definition: BakingStationDefinition;
-  base: Phaser.GameObjects.Rectangle;
-  frosting: Phaser.GameObjects.Arc;
-  label: Phaser.GameObjects.Text;
 }
 
 const DEFAULT_GROUND_Y = 560;
@@ -90,9 +81,31 @@ const OBSTACLE_HITBOXES: Record<ObstacleDefinition['kind'], HitboxProfile> = {
   cakeWall: { widthRatio: 0.52, heightRatio: 0.62, offsetY: 20 }
 };
 
+const CAT_RUN_FRAMES = ['catRun1', 'catRun2', 'catRun4', 'catRun5'] as const;
+const CAT_SLIDE_FRAMES = ['catSlideFrame1', 'catSlideFrame2', 'catSlideFrame3'] as const;
+const CAT_BUMP_FRAMES = ['catBump1', 'catBump2', 'catBump3'] as const;
+const CAT_ANIMATION_ASSETS = [
+  ...CAT_RUN_FRAMES,
+  ...CAT_SLIDE_FRAMES,
+  'catJumpFrame1',
+  'catJumpFrame2',
+  'catJumpFrame3',
+  'catJumpFrame4',
+  ...CAT_BUMP_FRAMES
+] as const;
+
+type CatPoseKey =
+  | 'cat'
+  | 'catSlide'
+  | 'catJump'
+  | 'catHurt'
+  | 'catVictory'
+  | (typeof CAT_ANIMATION_ASSETS)[number];
+
 export class PlayScene extends Phaser.Scene {
   private level!: LevelDefinition;
   private cat!: Phaser.GameObjects.Sprite;
+  private currentCatPose?: CatPoseKey;
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private keyMoveLeftA?: Phaser.Input.Keyboard.Key;
   private keyMoveRightD?: Phaser.Input.Keyboard.Key;
@@ -115,11 +128,8 @@ export class PlayScene extends Phaser.Scene {
   private bakingStationsCompleted = 0;
   private comboBonus = 0;
   private penaltyPoints = 0;
-  private gatesSolved = new Set<number>();
-  private bakingStationsSolved = new Set<string>();
   private obstacleResolvedIds = new Set<string>();
   private thrustersCollected = new Set<string>();
-  private activeGate = false;
   private activeBakingStation = false;
   private activePower = false;
   private activePowerType?: PowerupType;
@@ -138,7 +148,6 @@ export class PlayScene extends Phaser.Scene {
   private platforms: PlatformObject[] = [];
   private obstacles: ObstacleObject[] = [];
   private thrusters: ThrusterObject[] = [];
-  private bakingStations: BakingStationObject[] = [];
   private verticalVelocity = 0;
   private onGround = true;
   private currentSurfaceY = DEFAULT_GROUND_Y;
@@ -155,6 +164,8 @@ export class PlayScene extends Phaser.Scene {
   private lastJumpAt = Number.NEGATIVE_INFINITY;
   private lastSlideAt = Number.NEGATIVE_INFINITY;
   private lastPowerAt = Number.NEGATIVE_INFINITY;
+  private bumpFeedbackStartedAt = Number.NEGATIVE_INFINITY;
+  private bumpFeedbackUntil = Number.NEGATIVE_INFINITY;
 
   constructor() {
     super('PlayScene');
@@ -182,11 +193,8 @@ export class PlayScene extends Phaser.Scene {
     this.bakingStationsCompleted = 0;
     this.comboBonus = 0;
     this.penaltyPoints = 0;
-    this.gatesSolved.clear();
-    this.bakingStationsSolved.clear();
     this.obstacleResolvedIds.clear();
     this.thrustersCollected.clear();
-    this.activeGate = false;
     this.activeBakingStation = false;
     this.activePower = false;
     this.activePowerType = undefined;
@@ -195,10 +203,10 @@ export class PlayScene extends Phaser.Scene {
     this.sliding = false;
     this.completed = false;
     this.invincible = false;
+    this.currentCatPose = undefined;
     this.platforms = [];
     this.obstacles = [];
     this.thrusters = [];
-    this.bakingStations = [];
     this.verticalVelocity = 0;
     this.onGround = true;
     this.currentSurfaceY = this.groundY;
@@ -210,6 +218,8 @@ export class PlayScene extends Phaser.Scene {
     this.lastJumpAt = Number.NEGATIVE_INFINITY;
     this.lastSlideAt = Number.NEGATIVE_INFINITY;
     this.lastPowerAt = Number.NEGATIVE_INFINITY;
+    this.bumpFeedbackStartedAt = Number.NEGATIVE_INFINITY;
+    this.bumpFeedbackUntil = Number.NEGATIVE_INFINITY;
   }
 
   preload(): void {
@@ -268,8 +278,6 @@ export class PlayScene extends Phaser.Scene {
     this.createPlatforms();
     this.createObstacles();
     this.createPointThrusters();
-    this.createBakingStations();
-    this.createMathGates();
     this.createCat();
     this.createHud();
     this.createControls();
@@ -306,8 +314,6 @@ export class PlayScene extends Phaser.Scene {
 
     this.checkObstacleOverlaps();
     this.checkThrusterOverlaps();
-    this.checkBakingStationTriggers();
-    this.checkGateTriggers();
     this.checkLevelComplete();
     this.updateHud();
   }
@@ -458,9 +464,17 @@ export class PlayScene extends Phaser.Scene {
         .circle(thruster.x, thruster.y, radius, color, 0.22)
         .setStrokeStyle(6, color, 1)
         .setDepth(6);
-      const core = this.add.circle(thruster.x, thruster.y, radius * 0.58, 0xffffff, 0.92).setDepth(7);
+      const core = this.add
+        .circle(thruster.x, thruster.y + 4, radius * 0.68, 0xfff4c7, 0.96)
+        .setStrokeStyle(4, 0x8c5b2e, 0.84)
+        .setDepth(7);
+      const sprinkles = [
+        this.add.circle(thruster.x - radius * 0.2, thruster.y - radius * 0.08, radius * 0.12, color, 1).setDepth(8),
+        this.add.circle(thruster.x + radius * 0.16, thruster.y - radius * 0.14, radius * 0.1, 0xf05f73, 1).setDepth(8),
+        this.add.circle(thruster.x + radius * 0.02, thruster.y + radius * 0.1, radius * 0.09, 0x27b6a5, 1).setDepth(8)
+      ];
       const valueText = this.add
-        .text(thruster.x, thruster.y - 5, `+${thruster.value}`, {
+        .text(thruster.x, thruster.y + 2, `+${thruster.value}`, {
           fontFamily: 'Arial, sans-serif',
           fontSize: thruster.value >= 500 ? '23px' : '21px',
           color: '#102033',
@@ -479,107 +493,8 @@ export class PlayScene extends Phaser.Scene {
         ease: 'Sine.easeInOut'
       });
 
-      this.thrusters.push({ definition: thruster, ring, core, valueText });
+      this.thrusters.push({ definition: thruster, ring, core, sprinkles, valueText });
     }
-  }
-
-  private createBakingStations(): void {
-    this.bakingStations = [];
-
-    for (const station of this.level.bakingStations) {
-      const stationSurfaceY = station.y ?? this.groundY;
-      const totalValue = station.value + station.perfectBonus;
-      this.add
-        .circle(station.x, stationSurfaceY - 108, 70, 0xffd23f, 0.15)
-        .setStrokeStyle(5, 0xffd23f, 0.95)
-        .setDepth(3);
-      const base = this.add
-        .rectangle(station.x, stationSurfaceY - 80, 168, 116, 0xfff4c7, 0.96)
-        .setStrokeStyle(5, 0x102033)
-        .setDepth(4);
-      const frosting = this.add.circle(station.x, stationSurfaceY - 108, 48, 0xff9ec7, 0.94).setDepth(5);
-      this.add.circle(station.x - 26, stationSurfaceY - 118, 7, 0xffd23f, 1).setDepth(6);
-      this.add.circle(station.x + 7, stationSurfaceY - 128, 7, 0x27b6a5, 1).setDepth(6);
-      this.add.circle(station.x + 30, stationSurfaceY - 109, 7, 0xf05f73, 1).setDepth(6);
-      this.add
-        .rectangle(station.x, stationSurfaceY - 39, 136, 44, 0xd56b6b, 1)
-        .setStrokeStyle(3, 0x102033)
-        .setDepth(5);
-      this.add
-        .text(station.x, stationSurfaceY - 47, `Base +${station.value}`, {
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '16px',
-          color: '#ffffff',
-          fontStyle: '900'
-        })
-        .setOrigin(0.5)
-        .setDepth(6);
-      this.add
-        .text(station.x, stationSurfaceY - 26, `Perfect +${station.perfectBonus}`, {
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '15px',
-          color: '#ffec9f',
-          fontStyle: '900'
-        })
-        .setOrigin(0.5)
-        .setDepth(6);
-      const label = this.add
-        .text(station.x, stationSurfaceY - 176, `Bake: ${station.label} +${totalValue}`, {
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '18px',
-          color: '#102033',
-          fontStyle: '900',
-          backgroundColor: 'rgba(255,255,255,0.78)',
-          padding: { x: 8, y: 4 }
-        })
-        .setOrigin(0.5)
-        .setDepth(5);
-
-      this.tweens.add({
-        targets: frosting,
-        y: frosting.y - 8,
-        duration: 720,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-      });
-
-      this.bakingStations.push({ definition: station, base, frosting, label });
-    }
-  }
-
-  private createMathGates(): void {
-    this.level.gatePositions.forEach((x, index) => {
-      const gateSurfaceY = this.getGateSurfaceY(index);
-      const gate = this.add.image(x, gateSurfaceY - 108, 'gate').setDepth(3);
-      this.setAssetDisplaySize(gate, 'gate');
-      this.add
-        .rectangle(x, gateSurfaceY - 108, 118, 48, 0xfffcec)
-        .setStrokeStyle(4, 0x2a1a0e)
-        .setDepth(4);
-      this.add
-        .text(x, gateSurfaceY - 108, `Gate ${index + 1}`, {
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '24px',
-          color: '#102033',
-          fontStyle: '900'
-        })
-        .setOrigin(0.5)
-        .setDepth(4);
-      this.add
-        .rectangle(x, gateSurfaceY - 57, 70, 35, 0x38a16d)
-        .setStrokeStyle(4, 0x2a1a0e)
-        .setDepth(4);
-      this.add
-        .text(x, gateSurfaceY - 57, 'Math', {
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '17px',
-          color: '#ffffff',
-          fontStyle: '900'
-        })
-        .setOrigin(0.5)
-        .setDepth(5);
-    });
   }
 
   private createHud(): void {
@@ -635,9 +550,9 @@ export class PlayScene extends Phaser.Scene {
       .setDepth(21);
 
     this.progressText = this.add
-      .text(800, 18, 'Math 0/0 | Bake 0/0 | Hits 0', {
+      .text(785, 18, 'Pastries 0/0 | Hits 0', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '18px',
+        fontSize: '17px',
         color: '#ffffff',
         fontStyle: '800'
       })
@@ -645,11 +560,13 @@ export class PlayScene extends Phaser.Scene {
       .setDepth(21);
 
     this.instructionText = this.add
-      .text(640, 96, `${this.level.subtitle} Collect Point Thrusters and build the biggest score.`, {
+      .text(640, 96, 'Climb, jump, crawl, collect pastries. Bake at the top for a multiplier.', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '21px',
         color: '#102033',
         fontStyle: '800',
+        align: 'center',
+        wordWrap: { width: 1040 },
         backgroundColor: 'rgba(255,255,255,0.75)',
         padding: { x: 14, y: 8 }
       })
@@ -836,9 +753,10 @@ export class PlayScene extends Phaser.Scene {
     this.collectNearbyThrustersForAction('jump');
 
     if (this.onGround) {
+      const jumpSurfaceY = this.catSurfaceY();
       this.verticalVelocity = -920;
       this.onGround = false;
-      this.currentSurfaceY = this.groundY;
+      this.currentSurfaceY = jumpSurfaceY;
       this.setCatPose('catJump');
       this.showActionFeedback('Jump!', 0x27b6a5);
     }
@@ -904,17 +822,17 @@ export class PlayScene extends Phaser.Scene {
         this.flashCat(0xffd23f);
         break;
       case 'knight':
+        this.currentSurfaceY = this.catSurfaceY();
         this.verticalVelocity = -850;
         this.onGround = false;
         this.climbing = false;
-        this.currentSurfaceY = this.groundY;
         this.flashCat(0x27b6a5);
         break;
       case 'bishop':
+        this.currentSurfaceY = this.catSurfaceY();
         this.verticalVelocity = -650;
         this.onGround = false;
         this.climbing = false;
-        this.currentSurfaceY = this.groundY;
         this.cat.x = Phaser.Math.Clamp(this.cat.x + 90, this.startX, this.worldWidth - 40);
         this.flashCat(0x6f64d9);
         break;
@@ -943,169 +861,11 @@ export class PlayScene extends Phaser.Scene {
     });
   }
 
-  private checkBakingStationTriggers(): void {
-    if (this.activeGate || this.activeBakingStation) {
-      return;
-    }
-
-    for (const stationObject of this.bakingStations) {
-      const station = stationObject.definition;
-      const stationSurfaceY = station.y ?? this.groundY;
-      if (
-        this.bakingStationsSolved.has(station.id) ||
-        this.cat.x < station.x - 44 ||
-        Math.abs(this.catSurfaceY() - stationSurfaceY) > 110
-      ) {
-        continue;
-      }
-
-      this.activeBakingStation = true;
-      const eventKey = `baking-station-${this.level.id}-${station.id}-${Date.now()}`;
-      const bakingScene = this.scene.get('BakingMiniGameScene');
-      let settled = false;
-      let onResult: (result: unknown) => void;
-
-      const recoverWithoutResult = () => {
-        if (settled) {
-          return;
-        }
-
-        settled = true;
-        this.game.events.off(eventKey, onResult);
-        this.activeBakingStation = false;
-        this.scene.resume();
-      };
-
-      onResult = (result: unknown) => {
-        if (settled) {
-          return;
-        }
-
-        if (!isBakingStationResult(result)) {
-          recoverWithoutResult();
-          return;
-        }
-
-        settled = true;
-        bakingScene.events.off(Phaser.Scenes.Events.SHUTDOWN, recoverWithoutResult);
-        this.bakingStationsSolved.add(station.id);
-        const awardedPoints = calculateBakingAward(station, result);
-        this.bakingStationsCompleted += 1;
-        this.bakingPerfect += result.perfect ? 1 : 0;
-
-        if (result.mistakes > 0) {
-          this.breakCombo();
-        }
-
-        this.awardSkillPoints(
-          awardedPoints,
-          'baking',
-          station.x,
-          stationSurfaceY - 188,
-          result.perfect ? 'Perfect bake!' : 'Bake bonus'
-        );
-        this.finishBakingStationVisual(stationObject);
-        this.activeBakingStation = false;
-        this.scene.resume();
-      };
-
-      this.game.events.once(eventKey, onResult);
-      bakingScene.events.once(Phaser.Scenes.Events.SHUTDOWN, recoverWithoutResult);
-
-      try {
-        this.scene.pause();
-        this.scene.launch('BakingMiniGameScene', {
-          station,
-          eventKey,
-          stationNumber: this.bakingStationsCompleted + 1
-        });
-      } catch {
-        recoverWithoutResult();
-      }
-
-      return;
-    }
-  }
-
-  private checkGateTriggers(): void {
-    if (this.activeGate || this.activeBakingStation) {
-      return;
-    }
-
-    for (let index = 0; index < this.level.gatePositions.length; index += 1) {
-      const gateX = this.level.gatePositions[index];
-      const gateSurfaceY = this.getGateSurfaceY(index);
-      if (
-        this.gatesSolved.has(index) ||
-        this.cat.x < gateX - 44 ||
-        Math.abs(this.catSurfaceY() - gateSurfaceY) > 125
-      ) {
-        continue;
-      }
-
-      this.activeGate = true;
-      const problem = generateProblemForLevel(this.level.mathCategories);
-      const eventKey = `math-gate-${this.level.id}-${index}-${Date.now()}`;
-      const mathGateScene = this.scene.get('MathGateScene');
-      let settled = false;
-      let onResult: (result: unknown) => void;
-
-      const recoverWithoutResult = () => {
-        if (settled) {
-          return;
-        }
-
-        settled = true;
-        this.game.events.off(eventKey, onResult);
-        mathGateScene.events.off(Phaser.Scenes.Events.SHUTDOWN, recoverWithoutResult);
-        this.activeGate = false;
-        this.scene.resume();
-
-        if (this.scene.isActive('MathGateScene')) {
-          this.scene.stop('MathGateScene');
-        }
-      };
-
-      onResult = (result: unknown) => {
-        if (settled) {
-          return;
-        }
-
-        if (!isMathGateResult(result)) {
-          recoverWithoutResult();
-          return;
-        }
-
-        settled = true;
-        mathGateScene.events.off(Phaser.Scenes.Events.SHUTDOWN, recoverWithoutResult);
-        this.gatesSolved.add(index);
-        this.mathCorrect += 1;
-        this.mathAttempts += 1 + result.wrongAttempts;
-        this.hintsUsed += result.hintUsed ? 1 : 0;
-        this.awardMathGatePoints(result.wrongAttempts);
-        this.activeGate = false;
-        this.scene.resume();
-      };
-
-      this.game.events.once(eventKey, onResult);
-      mathGateScene.events.once(Phaser.Scenes.Events.SHUTDOWN, recoverWithoutResult);
-
-      try {
-        this.scene.pause();
-        this.scene.launch('MathGateScene', {
-          problem,
-          eventKey,
-          gateNumber: index + 1
-        });
-      } catch {
-        recoverWithoutResult();
-      }
-
-      return;
-    }
-  }
-
   private checkLevelComplete(): void {
+    if (this.activeBakingStation) {
+      return;
+    }
+
     const finish = this.level.finish;
     if (finish) {
       const atFinish =
@@ -1118,6 +878,83 @@ export class PlayScene extends Phaser.Scene {
     }
 
     this.completed = true;
+    this.launchEndBakeOff();
+  }
+
+  private launchEndBakeOff(): void {
+    this.activeBakingStation = true;
+    const actionScore = this.currentScore();
+    const station = this.buildEndBakeOffStation();
+    const eventKey = `end-bake-off-${this.level.id}-${Date.now()}`;
+    const bakingScene = this.scene.get('BakingMiniGameScene');
+    let settled = false;
+    let onResult: (result: unknown) => void;
+
+    const fallbackResult = (): void => {
+      this.finishLevelWithBakeOff({
+        mistakes: 1,
+        perfect: false,
+        multiplier: 1,
+        mathCorrect: 0,
+        mathAttempts: 1
+      });
+    };
+
+    const recoverWithoutResult = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      this.game.events.off(eventKey, onResult);
+      this.activeBakingStation = false;
+      fallbackResult();
+    };
+
+    onResult = (result: unknown) => {
+      if (settled) {
+        return;
+      }
+
+      if (!isBakingStationResult(result)) {
+        recoverWithoutResult();
+        return;
+      }
+
+      settled = true;
+      bakingScene.events.off(Phaser.Scenes.Events.SHUTDOWN, recoverWithoutResult);
+      this.activeBakingStation = false;
+      this.finishLevelWithBakeOff(result);
+    };
+
+    this.game.events.once(eventKey, onResult);
+    bakingScene.events.once(Phaser.Scenes.Events.SHUTDOWN, recoverWithoutResult);
+
+    try {
+      this.scene.pause();
+      this.scene.launch('BakingMiniGameScene', {
+        station,
+        eventKey,
+        stationNumber: this.level.index + 1,
+        actionScore,
+        levelTitle: this.level.title
+      });
+    } catch {
+      recoverWithoutResult();
+    }
+  }
+
+  private finishLevelWithBakeOff(result: BakingStationResult): void {
+    this.mathCorrect = result.mathCorrect;
+    this.mathAttempts = result.mathAttempts;
+    this.bakingStationsCompleted = 1;
+    this.bakingPerfect = result.perfect ? 1 : 0;
+    this.bakingPoints = Math.max(0, Math.round(this.currentScore() * (result.multiplier - 1)));
+
+    if (result.mistakes > 0) {
+      this.breakCombo();
+    }
+
     const summary = buildScoreSummary({
       level: this.level,
       activeElapsedMs: this.elapsedMs,
@@ -1135,7 +972,7 @@ export class PlayScene extends Phaser.Scene {
       bakingPoints: this.bakingPoints,
       bakingPerfect: this.bakingPerfect,
       bakingStationsCompleted: this.bakingStationsCompleted,
-      totalBakingStations: this.level.bakingStations.length,
+      totalBakingStations: 1,
       comboBonus: this.comboBonus,
       penaltyPoints: this.penaltyPoints,
       completed: true
@@ -1143,7 +980,26 @@ export class PlayScene extends Phaser.Scene {
 
     const summaries = (this.registry.get('scoreSummaries') ?? []) as ScoreSummary[];
     this.registry.set('scoreSummaries', replaceScoreSummary(summaries, summary));
+    this.scene.resume();
     this.scene.start('ResultsScene', { levelIndex: this.level.index, summary });
+  }
+
+  private buildEndBakeOffStation(): BakingStationDefinition {
+    const recipes: BakingStationDefinition['recipe'][] = [
+      ['frosting', 'sprinkles', 'berry'],
+      ['frosting', 'berry', 'sprinkles', 'candle'],
+      ['berry', 'frosting', 'candle', 'sprinkles']
+    ];
+
+    return {
+      id: `${this.level.id}-final-bake-off`,
+      x: this.level.finish?.x ?? this.level.trackLength,
+      y: this.level.finish?.y ?? this.groundY,
+      label: `${this.level.title} Bake-Off`,
+      recipe: recipes[this.level.index] ?? recipes[0],
+      value: 0,
+      perfectBonus: 0
+    };
   }
 
   private handleObstacleOverlap(obstacle: ObstacleDefinition): void {
@@ -1162,10 +1018,12 @@ export class PlayScene extends Phaser.Scene {
     this.breakCombo();
     this.applyPointPenalty(OBSTACLE_HIT_PENALTY_POINTS, 'Bump');
     this.cat.x -= 24;
-    this.setCatPose('catHurt');
+    this.bumpFeedbackStartedAt = this.elapsedMs;
+    this.bumpFeedbackUntil = this.elapsedMs + 430;
+    this.setCatPose('catBump1');
     this.cat.setTint(0xf05f73);
     this.cameras.main.shake(150, 0.006);
-    this.time.delayedCall(260, () => {
+    this.time.delayedCall(430, () => {
       this.cat.clearTint();
       this.restoreMovementCatPose();
     });
@@ -1228,20 +1086,21 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private isObstacleClearedByAction(kind: ObstacleDefinition['kind']): boolean {
-    const jumpIsFresh =
-      this.actionIsFresh(this.lastJumpAt, JUMP_ACTION_GRACE_MS) || this.cat.y < this.currentSurfaceY - 78 || this.activePower;
+    const jumpIsActive =
+      (!this.onGround && this.catSurfaceY() < this.currentSurfaceY - 38) ||
+      this.actionIsFresh(this.lastJumpAt, JUMP_ACTION_GRACE_MS / 2);
     const slideIsFresh = this.sliding || this.actionIsFresh(this.lastSlideAt, SLIDE_ACTION_GRACE_MS);
     const powerIsFresh = this.activePower || this.actionIsFresh(this.lastPowerAt, POWER_ACTION_GRACE_MS);
 
     switch (kind) {
       case 'lowBarrier':
       case 'swing':
-        return slideIsFresh || powerIsFresh;
+        return slideIsFresh;
       case 'cakeWall':
         return powerIsFresh;
       case 'hurdle':
       case 'frostingPit':
-        return jumpIsFresh || powerIsFresh;
+        return jumpIsActive;
     }
   }
 
@@ -1260,6 +1119,10 @@ export class PlayScene extends Phaser.Scene {
         continue;
       }
 
+      if (Math.abs(obstacle.sprite.y - this.cat.y) > 170) {
+        continue;
+      }
+
       if (this.actionMatchesObstacle(action, obstacle.definition.kind)) {
         this.obstacleResolvedIds.add(obstacle.definition.id);
         this.awardObstacleClear(obstacle.definition);
@@ -1270,7 +1133,7 @@ export class PlayScene extends Phaser.Scene {
 
   private actionMatchesObstacle(action: ActionType, kind: ObstacleDefinition['kind']): boolean {
     if (action === 'power') {
-      return true;
+      return kind === 'cakeWall';
     }
 
     if (action === 'slide') {
@@ -1283,18 +1146,6 @@ export class PlayScene extends Phaser.Scene {
   private awardObstacleClear(obstacle: ObstacleDefinition, label = 'Clear!'): void {
     this.obstacleClears += 1;
     this.awardSkillPoints(OBSTACLE_CLEAR_POINTS, 'obstacle', obstacle.x, this.cat.y - 90, label);
-  }
-
-  private awardMathGatePoints(wrongAttempts: number): void {
-    const points = wrongAttempts === 0 ? FIRST_TRY_MATH_POINTS : RETRY_MATH_POINTS;
-    const label = wrongAttempts === 0 ? 'First try!' : 'Math points';
-
-    if (wrongAttempts > 0) {
-      this.breakCombo();
-    }
-
-    this.addPoints(points, 'math');
-    this.showScorePopup(this.cat.x, this.cat.y - 130, `+${points} ${label}`, 0xffd23f);
   }
 
   private awardSkillPoints(
@@ -1337,15 +1188,6 @@ export class PlayScene extends Phaser.Scene {
         this.comboBonus += amount;
         break;
     }
-  }
-
-  private finishBakingStationVisual(station: BakingStationObject): void {
-    station.base.setFillStyle(0x38a16d, 0.82);
-    station.frosting.setFillStyle(0xffffff, 0.82);
-    station.label.setText('Bake complete');
-    station.label.setColor('#ffffff');
-    station.label.setBackgroundColor('rgba(56, 161, 109, 0.92)');
-    this.tweens.killTweensOf(station.frosting);
   }
 
   private applyPointPenalty(points: number, label: string): void {
@@ -1399,12 +1241,12 @@ export class PlayScene extends Phaser.Scene {
       'thruster',
       thruster.definition.x,
       thruster.definition.y - 56,
-      'Thruster!'
+      'Pastry!'
     );
 
     this.tweens.killTweensOf(thruster.ring);
     this.tweens.add({
-      targets: [thruster.ring, thruster.core, thruster.valueText],
+      targets: [thruster.ring, thruster.core, ...thruster.sprinkles, thruster.valueText],
       alpha: 0,
       scale: 1.45,
       duration: 260,
@@ -1412,6 +1254,7 @@ export class PlayScene extends Phaser.Scene {
       onComplete: () => {
         thruster.ring.destroy();
         thruster.core.destroy();
+        thruster.sprinkles.forEach((sprinkle) => sprinkle.destroy());
         thruster.valueText.destroy();
       }
     });
@@ -1601,22 +1444,57 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
 
+    if (this.elapsedMs <= this.bumpFeedbackUntil) {
+      const frameIndex = Math.floor((this.elapsedMs - this.bumpFeedbackStartedAt) / 140) % CAT_BUMP_FRAMES.length;
+      this.setCatPose(CAT_BUMP_FRAMES[Math.max(0, frameIndex)]);
+      this.cat.setAngle(Math.sin(time / 60) * 8);
+      return;
+    }
+
+    if (this.sliding) {
+      const frame = CAT_SLIDE_FRAMES[Math.floor(time / 110) % CAT_SLIDE_FRAMES.length];
+      this.setCatPose(frame);
+      this.cat.setAngle(0);
+      return;
+    }
+
     if (this.climbing) {
+      this.setCatPose(Math.floor(time / 140) % 2 === 0 ? 'catJumpFrame2' : 'catJumpFrame3');
       this.cat.setAngle(Math.sin(time / 85) * 5);
       return;
     }
 
     if (!this.onGround) {
+      this.setCatPose(this.jumpFrameForVelocity());
       this.cat.setAngle(this.verticalVelocity < 0 ? -8 : 8);
       return;
     }
 
     if (this.getMoveDirection() !== 0) {
+      const frame = CAT_RUN_FRAMES[Math.floor(time / 95) % CAT_RUN_FRAMES.length];
+      this.setCatPose(frame);
       this.cat.setAngle(Math.sin(time / 85) * 4);
       return;
     }
 
+    this.setCatPose('cat');
     this.cat.setAngle(0);
+  }
+
+  private jumpFrameForVelocity(): CatPoseKey {
+    if (this.verticalVelocity < -520) {
+      return 'catJumpFrame1';
+    }
+
+    if (this.verticalVelocity < -120) {
+      return 'catJumpFrame2';
+    }
+
+    if (this.verticalVelocity < 260) {
+      return 'catJumpFrame3';
+    }
+
+    return 'catJumpFrame4';
   }
 
   private getLandingSurfaceY(previousY: number): number | undefined {
@@ -1707,12 +1585,8 @@ export class PlayScene extends Phaser.Scene {
     this.scoreText?.setText(`Score ${formatScore(this.currentScore())}`);
     this.comboText?.setText(`Combo x${this.combo}`);
     this.progressText?.setText(
-      `Math ${this.mathCorrect}/${this.mathAttempts} | Bake ${this.bakingStationsCompleted}/${this.level.bakingStations.length} | Hits ${this.obstacleHits}`
+      `Pastries ${this.thrustersCollected.size}/${this.level.pointThrusters.length} | Hits ${this.obstacleHits}`
     );
-  }
-
-  private getGateSurfaceY(index: number): number {
-    return this.level.gateYPositions?.[index] ?? this.groundY;
   }
 
   private getObstacleY(obstacle: ObstacleDefinition): number {
@@ -1839,7 +1713,7 @@ export class PlayScene extends Phaser.Scene {
       'catJump',
       'catHurt',
       'catVictory',
-      'gate',
+      ...CAT_ANIMATION_ASSETS,
       'rook',
       'knight',
       'bishop',
@@ -1893,18 +1767,23 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
-  private setCatPose(assetKey: 'cat' | 'catSlide' | 'catJump' | 'catHurt' | 'catVictory'): void {
+  private setCatPose(assetKey: CatPoseKey): void {
+    if (this.currentCatPose === assetKey) {
+      return;
+    }
+
+    this.currentCatPose = assetKey;
     this.cat.setTexture(assetKey);
     this.setAssetDisplaySize(this.cat, assetKey);
   }
 
   private restoreMovementCatPose(): void {
     if (this.sliding) {
-      this.setCatPose('catSlide');
+      this.setCatPose(CAT_SLIDE_FRAMES[0]);
       return;
     }
 
-    this.setCatPose(this.onGround ? 'cat' : 'catJump');
+    this.setCatPose(this.onGround ? 'cat' : this.jumpFrameForVelocity());
   }
 
   private setAssetDisplaySize(

@@ -73,6 +73,9 @@ export interface BakingStationDefinition {
 export interface BakingStationResult {
   mistakes: number;
   perfect: boolean;
+  multiplier: number;
+  mathCorrect: number;
+  mathAttempts: number;
 }
 
 export interface LevelDefinition {
@@ -91,8 +94,6 @@ export interface LevelDefinition {
   worldHeight?: number;
   startX?: number;
   groundY?: number;
-  gatePositions: number[];
-  gateYPositions?: number[];
   finish?: {
     x: number;
     y: number;

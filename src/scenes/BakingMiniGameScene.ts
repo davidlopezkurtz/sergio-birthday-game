@@ -1,38 +1,53 @@
 import Phaser from 'phaser';
-import { calculateBakingAward } from '../game/baking';
+import { calculateBakeMultiplier } from '../game/baking';
 import type { BakingIngredient, BakingStationDefinition, BakingStationResult } from '../types';
 
 export interface BakingMiniGameSceneData {
   station: BakingStationDefinition;
   eventKey: string;
   stationNumber: number;
+  actionScore?: number;
+  levelTitle?: string;
 }
 
 interface IngredientDisplay {
   ingredient: BakingIngredient;
   label: string;
   shortLabel: string;
+  pluralLabel: string;
   color: number;
 }
 
+interface MathChallenge {
+  prompt: string;
+  answer: number;
+  choices: number[];
+}
+
 const INGREDIENTS: IngredientDisplay[] = [
-  { ingredient: 'frosting', label: 'Frosting', shortLabel: 'Frost', color: 0xff9ec7 },
-  { ingredient: 'sprinkles', label: 'Sprinkles', shortLabel: 'Spr', color: 0xffd23f },
-  { ingredient: 'candle', label: 'Candle', shortLabel: 'Candle', color: 0x27b6a5 },
-  { ingredient: 'berry', label: 'Berry', shortLabel: 'Berry', color: 0xf05f73 }
+  { ingredient: 'frosting', label: 'Frosting', shortLabel: 'Frost', pluralLabel: 'frosting swirls', color: 0xff9ec7 },
+  { ingredient: 'sprinkles', label: 'Sprinkles', shortLabel: 'Spr', pluralLabel: 'sprinkle scoops', color: 0xffd23f },
+  { ingredient: 'candle', label: 'Candle', shortLabel: 'Candle', pluralLabel: 'candles', color: 0x27b6a5 },
+  { ingredient: 'berry', label: 'Berry', shortLabel: 'Berry', pluralLabel: 'berries', color: 0xf05f73 }
 ];
 
 export class BakingMiniGameScene extends Phaser.Scene {
   private station!: BakingStationDefinition;
   private eventKey = '';
+  private stationNumber = 1;
+  private actionScore = 0;
   private step = 0;
   private mistakes = 0;
   private locked = false;
+  private mathCorrect = false;
+  private challenge!: MathChallenge;
   private feedbackText?: Phaser.GameObjects.Text;
   private promptText?: Phaser.GameObjects.Text;
   private mistakeText?: Phaser.GameObjects.Text;
   private recipeSlots: Phaser.GameObjects.Rectangle[] = [];
   private recipeTexts: Phaser.GameObjects.Text[] = [];
+  private ingredientButtons: Phaser.GameObjects.Container[] = [];
+  private answerButtons: Phaser.GameObjects.Container[] = [];
   private keyBindings: { key: Phaser.Input.Keyboard.Key; handler: () => void }[] = [];
 
   constructor() {
@@ -42,50 +57,57 @@ export class BakingMiniGameScene extends Phaser.Scene {
   init(data: BakingMiniGameSceneData): void {
     this.station = data.station;
     this.eventKey = data.eventKey;
+    this.stationNumber = data.stationNumber;
+    this.actionScore = data.actionScore ?? 0;
     this.step = 0;
     this.mistakes = 0;
     this.locked = false;
+    this.mathCorrect = false;
     this.recipeSlots = [];
     this.recipeTexts = [];
+    this.ingredientButtons = [];
+    this.answerButtons = [];
     this.keyBindings = [];
+    this.challenge = this.buildMathChallenge();
   }
 
   create(data: BakingMiniGameSceneData): void {
     this.cameras.main.setBackgroundColor('rgba(16, 32, 51, 0.72)');
     this.add.rectangle(640, 360, 1280, 720, 0x102033, 0.72);
-    this.add.rectangle(640, 360, 920, 550, 0xffffff, 1).setStrokeStyle(7, 0xffd23f);
+    this.add.rectangle(640, 360, 940, 570, 0xffffff, 1).setStrokeStyle(7, 0xffd23f);
 
     this.add
-      .text(640, 120, `Bake-Off Bonus ${data.stationNumber}`, {
+      .text(640, 96, 'Final Bake-Off Multiplier', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '34px',
-        color: '#2f4056',
+        color: '#6b4a8c',
         fontStyle: '900'
       })
       .setOrigin(0.5);
 
     this.add
-      .text(640, 166, this.station.label, {
+      .text(640, 140, data.levelTitle ?? this.station.label, {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '42px',
+        fontSize: '38px',
         color: '#102033',
         fontStyle: '900',
-        align: 'center'
+        align: 'center',
+        wordWrap: { width: 860 }
       })
       .setOrigin(0.5);
 
     this.add
-      .text(740, 210, `Total possible: +${this.station.value + this.station.perfectBonus}\nPerfect bonus needs zero misses`, {
+      .text(732, 198, `Course score: ${this.actionScore.toLocaleString('en-US')}\nPerfect bake turns it into x2.0`, {
         fontFamily: 'Arial, sans-serif',
         fontSize: '22px',
-        color: '#6b4a8c',
+        color: '#2f4056',
         fontStyle: '900',
         align: 'center',
         lineSpacing: 4,
-        wordWrap: { width: 520 }
+        wordWrap: { width: 470 }
       })
       .setOrigin(0.5)
-      .setDepth(3);
+      .setDepth(4);
 
     this.drawCupcakePreview();
     this.createRecipeSlots();
@@ -96,27 +118,30 @@ export class BakingMiniGameScene extends Phaser.Scene {
         fontSize: '27px',
         color: '#102033',
         fontStyle: '900',
-        align: 'center'
+        align: 'center',
+        wordWrap: { width: 860 }
       })
       .setOrigin(0.5);
 
     this.feedbackText = this.add
-      .text(640, 574, 'Tap ingredients in recipe order. Wrong taps only cost the perfect bonus.', {
+      .text(640, 580, 'Tap ingredients in recipe order. Then solve one ingredient math question.', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '22px',
         color: '#2f4056',
         fontStyle: '700',
         align: 'center',
-        wordWrap: { width: 780 }
+        wordWrap: { width: 820 }
       })
       .setOrigin(0.5);
 
     this.mistakeText = this.add
-      .text(640, 610, `Perfect bonus: +${this.station.perfectBonus}`, {
+      .text(640, 618, 'Multiplier ladder: x2.0 perfect | x1.5 one miss | x1.2 retry', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '20px',
         color: '#6b4a8c',
-        fontStyle: '800'
+        fontStyle: '800',
+        align: 'center',
+        wordWrap: { width: 820 }
       })
       .setOrigin(0.5);
 
@@ -126,15 +151,15 @@ export class BakingMiniGameScene extends Phaser.Scene {
   }
 
   private drawCupcakePreview(): void {
-    this.add.rectangle(330, 272, 132, 92, 0xd56b6b, 1).setStrokeStyle(5, 0x102033);
-    this.add.circle(330, 224, 58, 0xff9ec7, 0.94).setStrokeStyle(5, 0x102033);
-    this.add.circle(302, 214, 8, 0xffd23f, 1);
-    this.add.circle(332, 196, 8, 0x27b6a5, 1);
-    this.add.circle(362, 220, 8, 0xf05f73, 1);
+    this.add.rectangle(328, 258, 132, 92, 0xd56b6b, 1).setStrokeStyle(5, 0x102033);
+    this.add.circle(328, 210, 58, 0xff9ec7, 0.94).setStrokeStyle(5, 0x102033);
+    this.add.circle(300, 200, 8, 0xffd23f, 1);
+    this.add.circle(330, 182, 8, 0x27b6a5, 1);
+    this.add.circle(360, 206, 8, 0xf05f73, 1);
     this.add
-      .text(330, 329, `Base +${this.station.value}`, {
+      .text(328, 315, 'Bake-Off', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '19px',
+        fontSize: '20px',
         color: '#102033',
         fontStyle: '900'
       })
@@ -143,7 +168,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
 
   private createRecipeSlots(): void {
     this.add
-      .text(720, 260, 'Recipe order', {
+      .text(720, 256, 'Recipe order', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '24px',
         color: '#2f4056',
@@ -154,9 +179,9 @@ export class BakingMiniGameScene extends Phaser.Scene {
     const startX = 580;
     this.station.recipe.forEach((ingredient, index) => {
       const x = startX + index * 140;
-      const slot = this.add.rectangle(x, 316, 112, 78, 0xfff4c7, 1).setStrokeStyle(4, 0x102033);
+      const slot = this.add.rectangle(x, 312, 112, 78, 0xfff4c7, 1).setStrokeStyle(4, 0x102033);
       const text = this.add
-        .text(x, 316, `${index + 1}. ${this.ingredientLabel(ingredient)}`, {
+        .text(x, 312, `${index + 1}. ${this.ingredientLabel(ingredient)}`, {
           fontFamily: 'Arial, sans-serif',
           fontSize: '18px',
           color: '#102033',
@@ -173,10 +198,10 @@ export class BakingMiniGameScene extends Phaser.Scene {
 
   private createIngredientButtons(): void {
     const positions = [
-      { x: 310, y: 490 },
-      { x: 530, y: 490 },
-      { x: 750, y: 490 },
-      { x: 970, y: 490 }
+      { x: 310, y: 492 },
+      { x: 530, y: 492 },
+      { x: 750, y: 492 },
+      { x: 970, y: 492 }
     ];
 
     INGREDIENTS.forEach((display, index) => {
@@ -218,6 +243,8 @@ export class BakingMiniGameScene extends Phaser.Scene {
         key.on('down', handler);
         this.keyBindings.push({ key, handler });
       }
+
+      this.ingredientButtons.push(container);
     });
   }
 
@@ -226,7 +253,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
     background: Phaser.GameObjects.Rectangle,
     originalColor: number
   ): void {
-    if (this.locked) {
+    if (this.locked || this.step >= this.station.recipe.length) {
       return;
     }
 
@@ -238,7 +265,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
       this.step += 1;
 
       if (this.step >= this.station.recipe.length) {
-        this.finish();
+        this.showMathQuestion();
         return;
       }
 
@@ -251,7 +278,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
     this.mistakes += 1;
     background.setFillStyle(0xf05f73);
     this.feedbackText?.setText(`Almost. The next ingredient is ${this.ingredientLabel(expected)}.`);
-    this.mistakeText?.setText(`Misses: ${this.mistakes} | Perfect bonus needs zero misses`);
+    this.mistakeText?.setText(`Misses: ${this.mistakes}. One miss lowers the final multiplier.`);
     this.time.delayedCall(220, () => background.setFillStyle(originalColor));
   }
 
@@ -264,23 +291,103 @@ export class BakingMiniGameScene extends Phaser.Scene {
     text?.setColor(ingredient === 'sprinkles' || ingredient === 'frosting' ? '#102033' : '#ffffff');
   }
 
-  private finish(): void {
+  private showMathQuestion(): void {
+    this.cleanupKeyboardHandlers();
+    this.ingredientButtons.forEach((button) => button.destroy());
+    this.ingredientButtons = [];
+    this.promptText?.setText(this.challenge.prompt);
+    this.feedbackText?.setText('Ingredient math sets the final score multiplier.');
+    this.mistakeText?.setText('Choose the total ingredient count.');
+    this.createAnswerButtons();
+  }
+
+  private createAnswerButtons(): void {
+    const positions = [
+      { x: 310, y: 492 },
+      { x: 530, y: 492 },
+      { x: 750, y: 492 },
+      { x: 970, y: 492 }
+    ];
+
+    this.challenge.choices.forEach((choice, index) => {
+      const container = this.add.container(positions[index].x, positions[index].y);
+      const background = this.add
+        .rectangle(0, 0, 188, 86, 0xffd23f)
+        .setStrokeStyle(5, 0x102033)
+        .setInteractive({ useHandCursor: true });
+      const numberText = this.add
+        .text(-70, -28, `${index + 1}`, {
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '18px',
+          color: '#102033',
+          fontStyle: '900'
+        })
+        .setOrigin(0.5);
+      const answerText = this.add
+        .text(0, 4, choice.toString(), {
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '34px',
+          color: '#102033',
+          fontStyle: '900'
+        })
+        .setOrigin(0.5);
+
+      container.add([background, numberText, answerText]);
+      background.on('pointerdown', () => this.chooseAnswer(choice, background));
+
+      const key = this.input.keyboard?.addKey(
+        [
+          Phaser.Input.Keyboard.KeyCodes.ONE,
+          Phaser.Input.Keyboard.KeyCodes.TWO,
+          Phaser.Input.Keyboard.KeyCodes.THREE,
+          Phaser.Input.Keyboard.KeyCodes.FOUR
+        ][index]
+      );
+      if (key) {
+        const handler = () => this.chooseAnswer(choice, background);
+        key.on('down', handler);
+        this.keyBindings.push({ key, handler });
+      }
+
+      this.answerButtons.push(container);
+    });
+  }
+
+  private chooseAnswer(choice: number, background: Phaser.GameObjects.Rectangle): void {
+    if (this.locked) {
+      return;
+    }
+
     this.locked = true;
-    const perfect = this.mistakes === 0;
+    this.mathCorrect = choice === this.challenge.answer;
+
+    if (this.mathCorrect) {
+      background.setFillStyle(0x38a16d);
+      this.feedbackText?.setText('Correct ingredient math.');
+    } else {
+      this.mistakes += 1;
+      background.setFillStyle(0xf05f73);
+      this.feedbackText?.setText(`Close. The ingredient total was ${this.challenge.answer}.`);
+    }
+
+    this.finish();
+  }
+
+  private finish(): void {
+    const perfect = this.mistakes === 0 && this.mathCorrect;
+    const multiplier = calculateBakeMultiplier(this.mistakes - (this.mathCorrect ? 0 : 1), this.mathCorrect);
+    const bonus = Math.max(0, Math.round(this.actionScore * (multiplier - 1)));
     const result: BakingStationResult = {
       mistakes: this.mistakes,
-      perfect
+      perfect,
+      multiplier,
+      mathCorrect: this.mathCorrect ? 1 : 0,
+      mathAttempts: 1
     };
-    const total = calculateBakingAward(this.station, result);
 
-    this.feedbackText?.setText(
-      perfect
-        ? `Perfect bake: +${this.station.value} base +${this.station.perfectBonus} perfect.`
-        : `Recipe complete: +${this.station.value} base. Perfect bonus missed.`
-    );
-    this.mistakeText?.setText(`Awarded +${total}. Back to the course.`);
+    this.mistakeText?.setText(`Multiplier x${multiplier.toFixed(1)} | Bonus +${bonus.toLocaleString('en-US')}`);
 
-    this.time.delayedCall(520, () => {
+    this.time.delayedCall(740, () => {
       this.game.events.emit(this.eventKey, result);
       this.scene.stop();
     });
@@ -289,6 +396,41 @@ export class BakingMiniGameScene extends Phaser.Scene {
   private updatePrompt(): void {
     const expected = this.station.recipe[this.step];
     this.promptText?.setText(`Step ${this.step + 1} of ${this.station.recipe.length}: choose ${this.ingredientLabel(expected)}`);
+  }
+
+  private buildMathChallenge(): MathChallenge {
+    const ingredient = this.station.recipe[(this.stationNumber - 1) % this.station.recipe.length];
+    const ingredientDisplay = this.ingredientDisplay(ingredient);
+    const treats = this.stationNumber + 2;
+    const perTreat = this.station.recipe.length;
+    const answer = treats * perTreat;
+    const choices = this.buildChoices(answer, [answer - treats, answer + treats, answer + perTreat + 1, answer - 1]);
+
+    return {
+      prompt: `${treats} birthday treats need ${perTreat} ${ingredientDisplay.pluralLabel} each. How many total?`,
+      answer,
+      choices
+    };
+  }
+
+  private buildChoices(answer: number, candidates: number[]): number[] {
+    const choices = [answer];
+
+    for (const candidate of candidates) {
+      const choice = Math.max(1, candidate);
+      if (!choices.includes(choice)) {
+        choices.push(choice);
+      }
+      if (choices.length === 4) {
+        break;
+      }
+    }
+
+    while (choices.length < 4) {
+      choices.push(answer + choices.length + 1);
+    }
+
+    return Phaser.Utils.Array.Shuffle(choices);
   }
 
   private ingredientLabel(ingredient: BakingIngredient): string {

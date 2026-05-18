@@ -3,7 +3,6 @@ import './style.css';
 import { BakingMiniGameScene } from './scenes/BakingMiniGameScene';
 import { BootScene } from './scenes/BootScene';
 import { FinaleScene } from './scenes/FinaleScene';
-import { MathGateScene } from './scenes/MathGateScene';
 import { PlayScene } from './scenes/PlayScene';
 import { ResultsScene } from './scenes/ResultsScene';
 import { TitleScene } from './scenes/TitleScene';
@@ -31,7 +30,7 @@ const config: Phaser.Types.Core.GameConfig = {
   input: {
     activePointers: 4
   },
-  scene: [BootScene, TitleScene, PlayScene, MathGateScene, BakingMiniGameScene, ResultsScene, FinaleScene]
+  scene: [BootScene, TitleScene, PlayScene, BakingMiniGameScene, ResultsScene, FinaleScene]
 };
 
 const game = new Phaser.Game(config);

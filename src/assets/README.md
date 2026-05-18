@@ -9,7 +9,6 @@ Stable display sizes:
 - `catSlide`: 190x90
 - obstacles: 160x160
 - chess powerups: 128x128
-- `gate`: 180x220
 - `star`: 96x96
 
 The manifest includes both 1x PNG URLs and `highDpiUrl` entries for the

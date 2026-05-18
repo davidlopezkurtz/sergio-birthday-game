@@ -4,18 +4,44 @@ import cakeWallUrl from './images/cakeWall-beast.png';
 import cakeWallHighDpiUrl from './images/cakeWall-beast-2x.png';
 import catUrl from './images/cat-ninja.png';
 import catHighDpiUrl from './images/cat-ninja-2x.png';
+import catBump1Url from './images/catBump1.png';
+import catBump1HighDpiUrl from './images/catBump1-2x.png';
+import catBump2Url from './images/catBump2.png';
+import catBump2HighDpiUrl from './images/catBump2-2x.png';
+import catBump3Url from './images/catBump3.png';
+import catBump3HighDpiUrl from './images/catBump3-2x.png';
 import catHurtUrl from './images/catHurt-ninja.png';
 import catHurtHighDpiUrl from './images/catHurt-ninja-2x.png';
 import catJumpUrl from './images/catJump-ninja.png';
 import catJumpHighDpiUrl from './images/catJump-ninja-2x.png';
+import catJumpFrame1Url from './images/catJumpFrame1.png';
+import catJumpFrame1HighDpiUrl from './images/catJumpFrame1-2x.png';
+import catJumpFrame2Url from './images/catJumpFrame2.png';
+import catJumpFrame2HighDpiUrl from './images/catJumpFrame2-2x.png';
+import catJumpFrame3Url from './images/catJumpFrame3.png';
+import catJumpFrame3HighDpiUrl from './images/catJumpFrame3-2x.png';
+import catJumpFrame4Url from './images/catJumpFrame4.png';
+import catJumpFrame4HighDpiUrl from './images/catJumpFrame4-2x.png';
+import catRun1Url from './images/catRun1.png';
+import catRun1HighDpiUrl from './images/catRun1-2x.png';
+import catRun2Url from './images/catRun2.png';
+import catRun2HighDpiUrl from './images/catRun2-2x.png';
+import catRun4Url from './images/catRun4.png';
+import catRun4HighDpiUrl from './images/catRun4-2x.png';
+import catRun5Url from './images/catRun5.png';
+import catRun5HighDpiUrl from './images/catRun5-2x.png';
 import catSlideUrl from './images/catSlide-ninja.png';
 import catSlideHighDpiUrl from './images/catSlide-ninja-2x.png';
+import catSlideFrame1Url from './images/catSlideFrame1.png';
+import catSlideFrame1HighDpiUrl from './images/catSlideFrame1-2x.png';
+import catSlideFrame2Url from './images/catSlideFrame2.png';
+import catSlideFrame2HighDpiUrl from './images/catSlideFrame2-2x.png';
+import catSlideFrame3Url from './images/catSlideFrame3.png';
+import catSlideFrame3HighDpiUrl from './images/catSlideFrame3-2x.png';
 import catVictoryUrl from './images/catVictory-ninja.png';
 import catVictoryHighDpiUrl from './images/catVictory-ninja-2x.png';
 import frostingPitUrl from './images/frostingPit-beast.png';
 import frostingPitHighDpiUrl from './images/frostingPit-beast-2x.png';
-import gateUrl from './images/gate-beast.png';
-import gateHighDpiUrl from './images/gate-beast-2x.png';
 import hurdleYarnUrl from './images/hurdle-yarn.png';
 import hurdleYarnHighDpiUrl from './images/hurdle-yarn-2x.png';
 import hurdleBakeryUrl from './images/hurdle-bakery.png';
@@ -57,11 +83,24 @@ import swingTowerHighDpiUrl from './images/swing-tower-2x.png';
 
 export type AssetKey =
   | 'cat'
+  | 'catRun1'
+  | 'catRun2'
+  | 'catRun4'
+  | 'catRun5'
   | 'catSlide'
+  | 'catSlideFrame1'
+  | 'catSlideFrame2'
+  | 'catSlideFrame3'
   | 'catJump'
+  | 'catJumpFrame1'
+  | 'catJumpFrame2'
+  | 'catJumpFrame3'
+  | 'catJumpFrame4'
   | 'catVictory'
   | 'catHurt'
-  | 'gate'
+  | 'catBump1'
+  | 'catBump2'
+  | 'catBump3'
   | 'hurdle'
   | 'hurdle-yarn'
   | 'hurdle-bakery'
@@ -93,7 +132,7 @@ export interface AssetManifestEntry {
   description: string;
   width: number;
   height: number;
-  kind: 'Hero' | 'MathGate' | 'Obstacle' | 'Power' | 'Score' | 'Background' | 'Platform';
+  kind: 'Hero' | 'Obstacle' | 'Power' | 'Score' | 'Background' | 'Platform';
   url?: string;
   highDpiUrl?: string;
 }
@@ -109,6 +148,42 @@ export const assetManifest: AssetManifestEntry[] = [
     highDpiUrl: catHighDpiUrl
   },
   {
+    key: 'catRun1',
+    description: 'Ninja cat run cycle frame 1',
+    width: 180,
+    height: 130,
+    kind: 'Hero',
+    url: catRun1Url,
+    highDpiUrl: catRun1HighDpiUrl
+  },
+  {
+    key: 'catRun2',
+    description: 'Ninja cat run cycle frame 2',
+    width: 180,
+    height: 130,
+    kind: 'Hero',
+    url: catRun2Url,
+    highDpiUrl: catRun2HighDpiUrl
+  },
+  {
+    key: 'catRun4',
+    description: 'Ninja cat run cycle frame 3',
+    width: 180,
+    height: 130,
+    kind: 'Hero',
+    url: catRun4Url,
+    highDpiUrl: catRun4HighDpiUrl
+  },
+  {
+    key: 'catRun5',
+    description: 'Ninja cat run cycle frame 4',
+    width: 180,
+    height: 130,
+    kind: 'Hero',
+    url: catRun5Url,
+    highDpiUrl: catRun5HighDpiUrl
+  },
+  {
     key: 'catSlide',
     description: 'Ninja cat low slide pose',
     width: 190,
@@ -118,6 +193,33 @@ export const assetManifest: AssetManifestEntry[] = [
     highDpiUrl: catSlideHighDpiUrl
   },
   {
+    key: 'catSlideFrame1',
+    description: 'Ninja cat slide animation frame 1',
+    width: 190,
+    height: 90,
+    kind: 'Hero',
+    url: catSlideFrame1Url,
+    highDpiUrl: catSlideFrame1HighDpiUrl
+  },
+  {
+    key: 'catSlideFrame2',
+    description: 'Ninja cat slide animation frame 2',
+    width: 190,
+    height: 90,
+    kind: 'Hero',
+    url: catSlideFrame2Url,
+    highDpiUrl: catSlideFrame2HighDpiUrl
+  },
+  {
+    key: 'catSlideFrame3',
+    description: 'Ninja cat slide animation frame 3',
+    width: 190,
+    height: 90,
+    kind: 'Hero',
+    url: catSlideFrame3Url,
+    highDpiUrl: catSlideFrame3HighDpiUrl
+  },
+  {
     key: 'catJump',
     description: 'Ninja cat mid-air jump pose',
     width: 180,
@@ -125,6 +227,42 @@ export const assetManifest: AssetManifestEntry[] = [
     kind: 'Hero',
     url: catJumpUrl,
     highDpiUrl: catJumpHighDpiUrl
+  },
+  {
+    key: 'catJumpFrame1',
+    description: 'Ninja cat jump animation frame 1',
+    width: 180,
+    height: 130,
+    kind: 'Hero',
+    url: catJumpFrame1Url,
+    highDpiUrl: catJumpFrame1HighDpiUrl
+  },
+  {
+    key: 'catJumpFrame2',
+    description: 'Ninja cat jump animation frame 2',
+    width: 180,
+    height: 130,
+    kind: 'Hero',
+    url: catJumpFrame2Url,
+    highDpiUrl: catJumpFrame2HighDpiUrl
+  },
+  {
+    key: 'catJumpFrame3',
+    description: 'Ninja cat jump animation frame 3',
+    width: 180,
+    height: 130,
+    kind: 'Hero',
+    url: catJumpFrame3Url,
+    highDpiUrl: catJumpFrame3HighDpiUrl
+  },
+  {
+    key: 'catJumpFrame4',
+    description: 'Ninja cat jump animation frame 4',
+    width: 180,
+    height: 130,
+    kind: 'Hero',
+    url: catJumpFrame4Url,
+    highDpiUrl: catJumpFrame4HighDpiUrl
   },
   {
     key: 'catVictory',
@@ -145,13 +283,31 @@ export const assetManifest: AssetManifestEntry[] = [
     highDpiUrl: catHurtHighDpiUrl
   },
   {
-    key: 'gate',
-    description: 'Obstacle-course math gate with blank sign area',
+    key: 'catBump1',
+    description: 'Ninja cat bump animation frame 1',
     width: 180,
-    height: 220,
-    kind: 'MathGate',
-    url: gateUrl,
-    highDpiUrl: gateHighDpiUrl
+    height: 130,
+    kind: 'Hero',
+    url: catBump1Url,
+    highDpiUrl: catBump1HighDpiUrl
+  },
+  {
+    key: 'catBump2',
+    description: 'Ninja cat bump animation frame 2',
+    width: 180,
+    height: 130,
+    kind: 'Hero',
+    url: catBump2Url,
+    highDpiUrl: catBump2HighDpiUrl
+  },
+  {
+    key: 'catBump3',
+    description: 'Ninja cat bump animation frame 3',
+    width: 180,
+    height: 130,
+    kind: 'Hero',
+    url: catBump3Url,
+    highDpiUrl: catBump3HighDpiUrl
   },
   {
     key: 'hurdle',

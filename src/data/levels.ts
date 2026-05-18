@@ -25,8 +25,8 @@ export const levels: LevelDefinition[] = [
     id: 'yarn-yard',
     index: 0,
     title: 'Yarn Yard Qualifier',
-    subtitle: 'Climb the yarn tower, dodge course hazards, and chase the top route.',
-    theme: 'A bright backyard tower course with yarn ladders, rail jumps, and score ledges.',
+    subtitle: 'Climb the yarn tower, jump rails, crawl tunnels, and grab pastry points.',
+    theme: 'A bright backyard tower course with yarn ladders, pastry jumps, and score ledges.',
     mathCategories: ['addSub'],
     powerup: 'rook',
     targetTimeMs: 90000,
@@ -36,8 +36,6 @@ export const levels: LevelDefinition[] = [
     worldHeight: WORLD_HEIGHT,
     startX: START_X,
     groundY: GROUND_Y,
-    gatePositions: [900, 300, 930],
-    gateYPositions: [GROUND_Y, 1100, 620],
     finish: { x: 1050, y: 380, width: 260, label: 'Top Yarn Bell' },
     platforms: [
       { id: 'yy-floor-1', x: 700, y: 1340, width: 1050, label: 'Yarn Yard Floor 2' },
@@ -84,7 +82,7 @@ export const levels: LevelDefinition[] = [
     id: 'frosting-factory',
     index: 1,
     title: 'Frosting Factory Bake-Off',
-    subtitle: 'Climb the mixer tower, hit bake stations, and take the risky frosting route.',
+    subtitle: 'Climb the mixer tower, dodge bakery hazards, and cash out pastries in the bake-off.',
     theme: 'A bakery-show tower with frosting ladders, mixer arms, and cupcake balconies.',
     mathCategories: ['multiplyDivide'],
     powerup: 'knight',
@@ -95,8 +93,6 @@ export const levels: LevelDefinition[] = [
     worldHeight: WORLD_HEIGHT,
     startX: START_X,
     groundY: GROUND_Y,
-    gatePositions: [830, 350, 920],
-    gateYPositions: [GROUND_Y, 1100, 620],
     finish: { x: 1050, y: 380, width: 260, label: 'Cake Stand Summit' },
     platforms: [
       { id: 'ff-floor-1', x: 700, y: 1340, width: 1050, label: 'Sugar Step Floor' },
@@ -136,33 +132,14 @@ export const levels: LevelDefinition[] = [
       { id: 'ff-thruster-bake-2', x: 720, y: 548, value: 500, requiredAction: 'jump', kind: 'risky' },
       { id: 'ff-thruster-summit', x: 1050, y: 305, value: 750, requiredAction: 'power', kind: 'risky' }
     ],
-    bakingStations: [
-      {
-        id: 'ff-bake-1',
-        x: 560,
-        y: 1100,
-        label: 'Cupcake Match',
-        recipe: ['frosting', 'sprinkles', 'candle'],
-        value: 500,
-        perfectBonus: 250
-      },
-      {
-        id: 'ff-bake-2',
-        x: 720,
-        y: 620,
-        label: 'Layer Cake Bonus',
-        recipe: ['frosting', 'berry', 'sprinkles'],
-        value: 650,
-        perfectBonus: 350
-      }
-    ]
+    bakingStations: []
   },
   {
     id: 'birthday-beast-tower',
     index: 2,
     title: 'Birthday Beast Tower',
-    subtitle: 'Climb the birthday beast, use chess powers, and crown the cat champion.',
-    theme: 'A final stacked tower course with candle hops, fraction gates, and summit thrusters.',
+    subtitle: 'Climb the birthday beast, use chess powers, and bake the final multiplier.',
+    theme: 'A final stacked tower course with candle hops, crawl hazards, pastries, and summit powers.',
     mathCategories: ['compareFraction'],
     powerup: 'queen',
     bonusPowerup: 'bishop',
@@ -173,8 +150,6 @@ export const levels: LevelDefinition[] = [
     worldHeight: WORLD_HEIGHT,
     startX: START_X,
     groundY: GROUND_Y,
-    gatePositions: [820, 310, 900, 970],
-    gateYPositions: [GROUND_Y, 1100, 620, 380],
     finish: { x: 1080, y: 380, width: 250, label: 'Birthday Crown' },
     platforms: [
       { id: 'bt-floor-1', x: 700, y: 1340, width: 1050, label: 'Candle Step Floor' },

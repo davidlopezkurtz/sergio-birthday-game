@@ -1,6 +1,6 @@
 # Sergio's Ultimate Mathmaster
 
-A tablet-first birthday game for Sergio's 7th birthday: a single-player cat obstacle-course climb with math gates, chess-flavored powers, baking micro-games, and a birthday finale.
+A tablet-first birthday game for Sergio's 7th birthday: a single-player cat obstacle-course climber with ladders, pastry pickups, chess-flavored powers, level-end baking math, and a birthday finale.
 
 ## Play
 
@@ -18,7 +18,7 @@ The game is designed for iPad Safari in landscape orientation, with desktop keyb
 - Ladders: hold `Jump`/`ArrowUp`/`W` near a ladder to climb up; hold `Down`/`ArrowDown`/`S` near a ladder to climb down
 - Power: on-screen `Power` or `Space`
 - Start: `Space`, `Enter`, or the start button
-- Math gates and baking games: tap the large answer/action buttons
+- Bake-off games: tap the large ingredient and answer buttons
 
 ## Gameplay
 
@@ -26,11 +26,11 @@ The game is designed for iPad Safari in landscape orientation, with desktop keyb
   - Yarn Yard Qualifier
   - Frosting Factory Bake-Off
   - Birthday Beast Tower
-- Math gates pause the course and ask one multiple-choice problem.
-- Wrong answers give hints and a small time penalty, with gentle retries.
-- Baking stations trigger short micro-games inside the Frosting Factory level.
+- Climb ladders between floors, then jump over hazards, crawl under low barriers, and use powers for special obstacles.
+- Collect pastries during the action course to build the base score.
+- Each level ends with a baking micro-game: follow the recipe, solve one ingredient math question, and multiply the course score.
 - Chess powers create special movement and protection moments.
-- Final results track time, math accuracy, obstacle hits, hints, bake-off bonuses, and stars.
+- Final results track time, bake math accuracy, obstacle hits, pastry points, bake-off bonuses, and stars.
 
 ## Development
 

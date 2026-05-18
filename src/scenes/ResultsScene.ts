@@ -68,14 +68,13 @@ export class ResultsScene extends Phaser.Scene {
 
     const earnedLines = [
       `Target score: ${formatScore(this.summary.targetScore)}`,
-      `Thrusters: ${this.summary.thrustersCollected}/${this.summary.totalThrusters} (+${formatScore(this.summary.thrusterPoints)})`,
+      `Pastries: ${this.summary.thrustersCollected}/${this.summary.totalThrusters} (+${formatScore(this.summary.thrusterPoints)})`,
       `Obstacle clears: ${this.summary.obstacleClears} (+${formatScore(this.summary.obstaclePoints)})`,
-      `Math: +${formatScore(this.summary.mathPoints)}`,
-      `Accuracy: ${this.summary.mathCorrect}/${this.summary.mathAttempts} (${accuracy})`,
+      `Bake math: ${this.summary.mathCorrect}/${this.summary.mathAttempts} (${accuracy})`,
       ...(this.summary.totalBakingStations > 0
         ? [
-            `Bake-Off: ${this.summary.bakingStationsCompleted}/${this.summary.totalBakingStations} (+${formatScore(this.summary.bakingPoints)})`,
-            `Perfect bakes: ${this.summary.bakingPerfect}/${this.summary.totalBakingStations}`
+            `Bake multiplier bonus: +${formatScore(this.summary.bakingPoints)}`,
+            `Perfect bake-offs: ${this.summary.bakingPerfect}/${this.summary.totalBakingStations}`
           ]
         : []),
       `Combo: +${formatScore(this.summary.comboBonus)}`,
@@ -85,10 +84,10 @@ export class ResultsScene extends Phaser.Scene {
     const bonusLines = [
       `Finish bonus: +${formatScore(this.summary.finishBonus)}`,
       `No-hit bonus: +${formatScore(this.summary.noHitBonus)}`,
-      `Math streak bonus: +${formatScore(this.summary.mathStreakBonus)}`,
+      `Bake math bonus: +${formatScore(this.summary.mathStreakBonus)}`,
       `Time bonus: +${formatScore(this.summary.timeBonus)}`,
       `Penalties: -${formatScore(this.summary.penaltyPoints)}`,
-      `Bumps: ${this.summary.obstacleHits} | Hints: ${this.summary.hintsUsed}`,
+      `Bumps: ${this.summary.obstacleHits}`,
       `Time: ${formatTime(this.summary.elapsedMs)}`
     ];
 

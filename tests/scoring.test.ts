@@ -140,13 +140,14 @@ describe('scoring', () => {
       completed: false,
       bakingPoints: 850,
       bakingPerfect: 1,
-      bakingStationsCompleted: 1
+      bakingStationsCompleted: 1,
+      totalBakingStations: 1
     });
 
     expect(summary.bakingPoints).toBe(850);
     expect(summary.bakingPerfect).toBe(1);
     expect(summary.bakingStationsCompleted).toBe(1);
-    expect(summary.totalBakingStations).toBe(level.bakingStations.length);
+    expect(summary.totalBakingStations).toBe(1);
     expect(summary.score).toBe(850);
   });
 

@@ -65,10 +65,10 @@ export class FinaleScene extends Phaser.Scene {
     const lines = [
       `Final score: ${formatScore(totalScore)}`,
       `Stars earned: ${totalStars}/9`,
-      `Point Thrusters: ${totalThrusters}/${totalAvailableThrusters}`,
+      `Pastries: ${totalThrusters}/${totalAvailableThrusters}`,
       ...(totalAvailableBakes > 0 ? [`Bake-Offs: ${totalBakes}/${totalAvailableBakes} | Perfect ${totalPerfectBakes}`] : []),
       `Best combo: x${bestCombo}`,
-      `Math accuracy: ${totalCorrect}/${totalAttempts} (${accuracy}%)`,
+      `Bake math: ${totalCorrect}/${totalAttempts} (${accuracy}%)`,
       `Total course time: ${formatTime(totalTime)}`
     ];
 
