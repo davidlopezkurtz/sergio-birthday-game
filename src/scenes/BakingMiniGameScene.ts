@@ -76,6 +76,10 @@ const SERVE_METER_CENTER_X = (SERVE_METER_LEFT + SERVE_METER_RIGHT) / 2;
 const SERVE_SWEET_CENTER_X = (SERVE_SWEET_LEFT + SERVE_SWEET_RIGHT) / 2;
 const SERVE_METER_SPEED = 340;
 const BAKEOFF_WATCHDOG_MS = 68000;
+const INGREDIENT_BUTTON_WIDTH = 132;
+const INGREDIENT_BUTTON_HEIGHT = 62;
+const SERVE_BUTTON_WIDTH = 166;
+const SERVE_BUTTON_HEIGHT = 82;
 const rackAnchorGuide = JSON.parse(trayPieceAnchorGuideJson) as RackAnchorGuide;
 
 const STATIONS: StationDisplay[] = [
@@ -128,6 +132,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
   private multiplierText?: Phaser.GameObjects.Text;
   private serveMeterText?: Phaser.GameObjects.Text;
   private serveMeterTrack?: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
+  private serveSweetZoneBack?: Phaser.GameObjects.Rectangle;
   private serveSweetZone?: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
   private serveMarker?: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
   private stationButtons: Phaser.GameObjects.Container[] = [];
@@ -416,8 +421,16 @@ export class BakingMiniGameScene extends Phaser.Scene {
     this.serveMeterTrack = this.addBakeoffImage('serve-meter-track', SERVE_METER_CENTER_X, SERVE_METER_Y, 5) ??
       this.add.rectangle(SERVE_METER_CENTER_X, SERVE_METER_Y, SERVE_METER_WIDTH, 18, 0x102033, 0.24).setStrokeStyle(3, 0x102033, 0.45);
     this.serveMeterTrack.setDisplaySize(SERVE_METER_WIDTH + 32, 46);
+    this.serveSweetZoneBack = this.add
+      .rectangle(SERVE_SWEET_CENTER_X, SERVE_METER_Y, SERVE_SWEET_WIDTH + 12, 42, 0x1fbf63, 0.98)
+      .setStrokeStyle(4, 0xffffff, 0.92)
+      .setDepth(6);
     this.serveSweetZone = this.addBakeoffImage('serve-meter-sweet-zone', SERVE_SWEET_CENTER_X, SERVE_METER_Y, 6) ??
       this.add.rectangle(SERVE_SWEET_CENTER_X, SERVE_METER_Y, SERVE_SWEET_WIDTH, 26, 0x38a16d, 0.95);
+    if (this.serveSweetZone instanceof Phaser.GameObjects.Image) {
+      this.serveSweetZone.setTint(0x1fbf63);
+    }
+    this.serveSweetZone.setAlpha(0.88);
     this.serveSweetZone.setDisplaySize(SERVE_SWEET_WIDTH, 46);
     this.serveMarker = this.addBakeoffImage('serve-meter-marker', this.serveMarkerX, SERVE_METER_Y, 7) ??
       this.add.rectangle(this.serveMarkerX, SERVE_METER_Y, 14, 40, 0xffd23f, 1).setStrokeStyle(2, 0x102033);
@@ -484,38 +497,55 @@ export class BakingMiniGameScene extends Phaser.Scene {
       { x: 546, y: 634 },
       { x: 736, y: 634 },
       { x: 926, y: 634 },
-      { x: 1116, y: 634 }
+      { x: 1110, y: 626 }
     ];
 
     STATIONS.forEach((display, index) => {
+      const isServe = display.step === 'serve';
+      const buttonWidth = isServe ? SERVE_BUTTON_WIDTH : INGREDIENT_BUTTON_WIDTH;
+      const buttonHeight = isServe ? SERVE_BUTTON_HEIGHT : INGREDIENT_BUTTON_HEIGHT;
+      const frameWidth = isServe ? 184 : 150;
+      const frameHeight = isServe ? 112 : 92;
+      const iconSize = isServe ? 58 : 48;
+      const labelX = isServe ? 26 : 20;
+      const labelY = isServe ? 16 : 13;
+      const numberX = -buttonWidth / 2 + 16;
+      const numberY = -buttonHeight / 2 + 13;
+      const labelColor = display.textColor;
+      const labelStrokeColor = labelColor === '#ffffff' ? '#102033' : '#fff4c7';
       const container = this.add.container(positions[index].x, positions[index].y);
-      const glow = this.add.rectangle(0, 0, 148, 78, 0xffd23f, 0.18).setStrokeStyle(4, 0xffd23f).setVisible(false);
-      const glowImage = this.addBakeoffImage('station-current-glow', 0, 0, 0)?.setDisplaySize(138, 138).setVisible(false);
-      const ring = this.addBakeoffImage('station-next-ring', 0, 0, 0)?.setDisplaySize(132, 132).setVisible(false);
-      const frame = this.addBakeoffImage('station-button-frame', 0, 0, 0)?.setDisplaySize(150, 92);
+      const glow = this.add.rectangle(0, 0, buttonWidth + 16, buttonHeight + 16, 0xffd23f, 0.18).setStrokeStyle(4, 0xffd23f).setVisible(false);
+      const glowImage = this.addBakeoffImage('station-current-glow', 0, 0, 0)?.setDisplaySize(frameHeight + 46, frameHeight + 46).setVisible(false);
+      const ring = this.addBakeoffImage('station-next-ring', 0, 0, 0)?.setDisplaySize(frameHeight + 40, frameHeight + 40).setVisible(false);
+      const frame = this.addBakeoffImage('station-button-frame', 0, 0, 0)?.setDisplaySize(frameWidth, frameHeight);
       const background = this.add
-        .rectangle(0, 0, 132, 62, display.color, frame ? 0.08 : 1)
+        .rectangle(0, 0, buttonWidth, buttonHeight, display.color, frame ? 0.08 : 1)
         .setStrokeStyle(frame ? 0 : 4, 0x102033)
         .setInteractive({ useHandCursor: true });
       const numberText = this.add
-        .text(-50, -21, `${index + 1}`, {
+        .text(numberX, numberY, `${index + 1}`, {
           fontFamily: 'Arial, sans-serif',
-          fontSize: '15px',
-          color: display.textColor,
+          fontSize: isServe ? '17px' : '15px',
+          color: labelColor,
           fontStyle: '900'
         })
         .setOrigin(0.5);
+      numberText.setStroke(labelStrokeColor, labelColor === '#ffffff' ? 4 : 3);
       const icon = this.drawStationIcon(display.step);
+      icon.setPosition(isServe ? -38 : -27, isServe ? 5 : 4);
+      const stationImage = this.stationIconImage(icon);
+      stationImage?.setDisplaySize(iconSize, iconSize);
       const label = this.add
-        .text(20, 13, display.label, {
+        .text(labelX, labelY, display.label, {
           fontFamily: 'Arial, sans-serif',
-          fontSize: display.label.length > 8 ? '14px' : '16px',
-          color: display.textColor,
+          fontSize: isServe ? '20px' : '18px',
+          color: labelColor,
           fontStyle: '900',
           align: 'center',
-          wordWrap: { width: 82 }
+          wordWrap: { width: isServe ? 96 : 82 }
         })
         .setOrigin(0.5);
+      label.setStroke(labelStrokeColor, labelColor === '#ffffff' ? 4 : 3);
 
       container.add([glow, ...(glowImage ? [glowImage] : []), ...(ring ? [ring] : []), ...(frame ? [frame] : []), background, numberText, icon, label]);
       background.on('pointerdown', () => this.chooseStation(display.step, background, display.color));
@@ -1185,6 +1215,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
 
   private setServeMeterActive(active: boolean): void {
     this.serveMeterTrack?.setVisible(active);
+    this.serveSweetZoneBack?.setVisible(active);
     this.serveSweetZone?.setVisible(active);
     this.serveMarker?.setVisible(active);
     this.serveMeterText?.setVisible(active);
