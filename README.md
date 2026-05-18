@@ -28,6 +28,7 @@ The game is designed for iPad Safari in landscape orientation, with desktop keyb
   - Birthday Beast Tower
 - Climb ladders between floors, then jump over hazards, crawl under low barriers, and use powers for special obstacles.
 - Collect pastries during the action course to build the base score.
+- The HUD shows the current chess badge, what power is ready, and whether it is recharging.
 - Each level ends with a baking micro-game: follow the recipe, solve one ingredient math question, and multiply the course score.
 - Chess powers create special movement and protection moments.
 - Final results track time, bake math accuracy, obstacle hits, pastry points, bake-off bonuses, and stars.

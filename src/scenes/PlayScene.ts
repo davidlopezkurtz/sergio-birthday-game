@@ -62,6 +62,9 @@ const CAT_JUMP_VELOCITY = -920;
 const CAT_POWER_JUMP_VELOCITY = -850;
 const CAT_BISHOP_JUMP_VELOCITY = -650;
 const GRAVITY = 1650;
+const LADDER_GRAB_X_TOLERANCE = 44;
+const LADDER_GRAB_Y_TOLERANCE = 28;
+const LADDER_EXIT_LOCKOUT_MS = 520;
 const COUNTDOWN_MS = 1400;
 const JUMP_ACTION_GRACE_MS = 1150;
 const SLIDE_ACTION_GRACE_MS = 950;
@@ -168,6 +171,7 @@ export class PlayScene extends Phaser.Scene {
   private lastJumpAt = Number.NEGATIVE_INFINITY;
   private lastSlideAt = Number.NEGATIVE_INFINITY;
   private lastPowerAt = Number.NEGATIVE_INFINITY;
+  private ladderGrabLockedUntil = Number.NEGATIVE_INFINITY;
   private bumpFeedbackStartedAt = Number.NEGATIVE_INFINITY;
   private bumpFeedbackUntil = Number.NEGATIVE_INFINITY;
 
@@ -222,6 +226,7 @@ export class PlayScene extends Phaser.Scene {
     this.lastJumpAt = Number.NEGATIVE_INFINITY;
     this.lastSlideAt = Number.NEGATIVE_INFINITY;
     this.lastPowerAt = Number.NEGATIVE_INFINITY;
+    this.ladderGrabLockedUntil = Number.NEGATIVE_INFINITY;
     this.bumpFeedbackStartedAt = Number.NEGATIVE_INFINITY;
     this.bumpFeedbackUntil = Number.NEGATIVE_INFINITY;
   }
@@ -544,11 +549,12 @@ export class PlayScene extends Phaser.Scene {
     this.setAssetDisplaySize(this.powerIcon, this.currentPowerup(), 0.38);
 
     this.powerText = this.add
-      .text(565, 24, `${this.powerLabel(this.currentPowerup())} ready`, {
+      .text(565, 14, this.powerStatusText('ready'), {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '22px',
+        fontSize: '18px',
         color: '#ffec9f',
-        fontStyle: '900'
+        fontStyle: '900',
+        wordWrap: { width: 200 }
       })
       .setScrollFactor(0)
       .setDepth(21);
@@ -788,7 +794,7 @@ export class PlayScene extends Phaser.Scene {
 
     this.startRunClock();
     if (!this.powerReady) {
-      this.showActionFeedback('Charging', 0xffd23f);
+      this.showActionFeedback('Power charging', 0xffd23f);
       return;
     }
 
@@ -802,7 +808,8 @@ export class PlayScene extends Phaser.Scene {
     this.invincible = true;
     this.powerIcon?.setTexture(power);
     this.setPowerIconSize();
-    this.powerText?.setText(`${this.powerLabel(power)} active`);
+    this.powerText?.setText(this.powerStatusText('active', power));
+    this.showActionFeedback(`${this.powerLabel(power)}!`, 0xffd23f);
 
     switch (power) {
       case 'rook':
@@ -838,14 +845,14 @@ export class PlayScene extends Phaser.Scene {
       this.invincible = false;
       this.powerIcon?.setTexture(this.currentPowerup());
       this.setPowerIconSize();
-      this.powerText?.setText(`${this.powerLabel(this.currentPowerup())} charging`);
+      this.powerText?.setText(this.powerStatusText('charging'));
     });
 
     this.time.delayedCall(4300, () => {
       this.powerReady = true;
       this.powerIcon?.setTexture(this.currentPowerup());
       this.setPowerIconSize();
-      this.powerText?.setText(`${this.powerLabel(this.currentPowerup())} ready`);
+      this.powerText?.setText(this.powerStatusText('ready'));
     });
   }
 
@@ -1328,7 +1335,7 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
 
-    const ladder = this.nearestLadder();
+    const ladder = this.nearestLadder({ ignoreLockout: true });
     if (!ladder) {
       this.climbing = false;
       return;
@@ -1354,12 +1361,14 @@ export class PlayScene extends Phaser.Scene {
       this.currentSurfaceY = ladder.yTop;
       this.climbing = false;
       this.onGround = true;
+      this.lockLadderGrab();
       this.restoreMovementCatPose();
     } else if (this.cat.y >= bottomCatY - 2) {
       this.cat.y = bottomCatY;
       this.currentSurfaceY = ladder.yBottom;
       this.climbing = false;
       this.onGround = true;
+      this.lockLadderGrab();
       this.restoreMovementCatPose();
     } else {
       this.setCatPose('catJump');
@@ -1385,14 +1394,22 @@ export class PlayScene extends Phaser.Scene {
     this.showActionFeedback(direction < 0 ? 'Climb!' : 'Down!', 0xffd23f);
   }
 
-  private nearestLadder(): CourseLadderDefinition | undefined {
+  private lockLadderGrab(): void {
+    this.ladderGrabLockedUntil = this.elapsedMs + LADDER_EXIT_LOCKOUT_MS;
+  }
+
+  private nearestLadder(options: { ignoreLockout?: boolean } = {}): CourseLadderDefinition | undefined {
+    if (!this.climbing && !options.ignoreLockout && this.elapsedMs < this.ladderGrabLockedUntil) {
+      return undefined;
+    }
+
     const catSurfaceY = this.catSurfaceY();
 
     return (this.level.ladders ?? []).find(
       (ladder) =>
-        Math.abs(this.cat.x - ladder.x) <= 74 &&
-        catSurfaceY >= Math.min(ladder.yTop, ladder.yBottom) - 42 &&
-        catSurfaceY <= Math.max(ladder.yTop, ladder.yBottom) + 42
+        Math.abs(this.cat.x - ladder.x) <= LADDER_GRAB_X_TOLERANCE &&
+        catSurfaceY >= Math.min(ladder.yTop, ladder.yBottom) - LADDER_GRAB_Y_TOLERANCE &&
+        catSurfaceY <= Math.max(ladder.yTop, ladder.yBottom) + LADDER_GRAB_Y_TOLERANCE
     );
   }
 
@@ -1627,6 +1644,17 @@ export class PlayScene extends Phaser.Scene {
         return 'Bishop Leap';
       case 'queen':
         return 'Queen Shield';
+    }
+  }
+
+  private powerStatusText(state: 'ready' | 'active' | 'charging', power = this.currentPowerup()): string {
+    switch (state) {
+      case 'active':
+        return `Chess badge: ${this.powerLabel(power)} active`;
+      case 'charging':
+        return `Chess badge: ${this.powerLabel(power)} charging`;
+      case 'ready':
+        return `Chess badge: ${this.powerLabel(power)} ready\nPower / Space`;
     }
   }
 
