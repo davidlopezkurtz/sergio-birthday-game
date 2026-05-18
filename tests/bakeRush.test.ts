@@ -46,6 +46,24 @@ describe('bake rush helpers', () => {
     });
   });
 
+  it('does not hang when duplicate candidates collide with fallback choices', () => {
+    const levelTwoStation: BakingStationDefinition = {
+      id: 'frosting-factory-final-bake-off',
+      x: 0,
+      label: 'Frosting Factory Bake-Off',
+      recipe: ['frosting', 'berry', 'sprinkles', 'candle'],
+      value: 0,
+      perfectBonus: 0
+    };
+
+    const order = buildBakeRushOrder(levelTwoStation, 2);
+
+    expect(order.answer).toBe(16);
+    expect(order.choices).toHaveLength(4);
+    expect(order.choices).toContain(16);
+    expect(new Set(order.choices).size).toBe(4);
+  });
+
   it('validates the expected station step', () => {
     const order = buildBakeRushOrder(station, 1);
 

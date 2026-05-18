@@ -74,11 +74,13 @@ export const buildBakeRushChoices = (answer: number, candidates: number[]): numb
     }
   }
 
+  let fallbackOffset = 1;
   while (choices.length < 4) {
-    const fallback = answer + choices.length + 1;
+    const fallback = Math.max(1, answer + fallbackOffset);
     if (!choices.includes(fallback)) {
       choices.push(fallback);
     }
+    fallbackOffset += 1;
   }
 
   return choices;
