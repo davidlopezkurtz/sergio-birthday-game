@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { assetsByKey } from '../assets/assetManifest';
 import { gameProfile } from '../data/profile';
-import { formatScore, formatTime } from '../game/scoring';
+import { formatScore, formatTime, uniqueScoreSummaries } from '../game/scoring';
 import type { ScoreSummary } from '../types';
 
 export class FinaleScene extends Phaser.Scene {
@@ -10,7 +10,7 @@ export class FinaleScene extends Phaser.Scene {
   }
 
   create(): void {
-    const summaries = (this.registry.get('scoreSummaries') ?? []) as ScoreSummary[];
+    const summaries = uniqueScoreSummaries((this.registry.get('scoreSummaries') ?? []) as ScoreSummary[]);
     const totalStars = summaries.reduce((sum, summary) => sum + summary.stars, 0);
     const totalScore = summaries.reduce((sum, summary) => sum + summary.score, 0);
     const totalTime = summaries.reduce((sum, summary) => sum + summary.elapsedMs, 0);

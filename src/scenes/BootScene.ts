@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
-import { assetManifest, resolveAssetUrl } from '../assets/assetManifest';
+import { assetsByKey, resolveAssetUrl, type AssetKey } from '../assets/assetManifest';
+
+const TITLE_ASSET_KEYS: AssetKey[] = ['cat'];
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -7,7 +9,33 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
-    for (const asset of assetManifest) {
+    const progressBar = this.add.rectangle(640, 404, 520, 18, 0xffffff, 0.24).setStrokeStyle(3, 0xffffff, 0.7);
+    const progressFill = this.add.rectangle(382, 404, 0, 18, 0xffd23f, 1).setOrigin(0, 0.5);
+    const loadingText = this.add
+      .text(640, 350, "Loading Sergio's birthday course...", {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '30px',
+        color: '#102033',
+        fontStyle: '900',
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        padding: { x: 18, y: 10 }
+      })
+      .setOrigin(0.5);
+
+    const updateProgress = (value: number) => {
+      progressFill.width = 516 * value;
+    };
+
+    this.load.on('progress', updateProgress);
+    this.load.once('complete', () => {
+      this.load.off('progress', updateProgress);
+      progressBar.destroy();
+      progressFill.destroy();
+      loadingText.destroy();
+    });
+
+    for (const key of TITLE_ASSET_KEYS) {
+      const asset = assetsByKey[key];
       const assetUrl = resolveAssetUrl(asset, window.devicePixelRatio);
       if (assetUrl) {
         this.load.image(asset.key, assetUrl);
@@ -22,18 +50,6 @@ export class BootScene extends Phaser.Scene {
 
   private createPlaceholders(): void {
     this.createCatTexture('cat', false);
-    this.createCatTexture('catSlide', true);
-    this.createGateTexture();
-    this.createObstacleTexture('hurdle', 0xffc33d, 'H');
-    this.createObstacleTexture('lowBarrier', 0x27b6a5, 'S');
-    this.createObstacleTexture('swing', 0xef6f8f, '!');
-    this.createObstacleTexture('frostingPit', 0xff9ec7, '~');
-    this.createObstacleTexture('cakeWall', 0x8c65d3, '#');
-    this.createPowerTexture('rook', 'R', 0x2f4056);
-    this.createPowerTexture('knight', 'N', 0x426b3c);
-    this.createPowerTexture('bishop', 'B', 0x6b4a8c);
-    this.createPowerTexture('queen', 'Q', 0xd2475c);
-    this.createStarTexture();
     this.createPhysicsBlockTexture();
   }
 
@@ -77,98 +93,6 @@ export class BootScene extends Phaser.Scene {
     graphics.lineBetween(126, bodyY + 18, 148, bodyY + 42);
 
     graphics.generateTexture(key, width, height);
-    graphics.destroy();
-  }
-
-  private createGateTexture(): void {
-    if (this.shouldSkipTexture('gate')) {
-      return;
-    }
-
-    const graphics = this.make.graphics({ x: 0, y: 0 }, false);
-    graphics.fillStyle(0x2f4056, 1);
-    graphics.fillRoundedRect(18, 10, 144, 190, 12);
-    graphics.fillStyle(0xffd23f, 1);
-    graphics.fillRoundedRect(34, 26, 112, 92, 8);
-    graphics.fillStyle(0xffffff, 1);
-    graphics.fillRoundedRect(44, 132, 92, 42, 8);
-    graphics.lineStyle(8, 0x27b6a5, 1);
-    graphics.strokeRoundedRect(18, 10, 144, 190, 12);
-    graphics.generateTexture('gate', 180, 220);
-    graphics.destroy();
-  }
-
-  private createObstacleTexture(key: string, color: number, symbol: string): void {
-    if (this.shouldSkipTexture(key)) {
-      return;
-    }
-
-    const graphics = this.make.graphics({ x: 0, y: 0 }, false);
-    graphics.fillStyle(color, 1);
-    graphics.fillRoundedRect(16, 22, 128, 116, 16);
-    graphics.lineStyle(8, 0xffffff, 0.8);
-    graphics.strokeRoundedRect(16, 22, 128, 116, 16);
-    graphics.fillStyle(0x102033, 1);
-    graphics.fillCircle(55, 78, 8);
-    graphics.fillCircle(105, 78, 8);
-    graphics.generateTexture(key, 160, 160);
-    graphics.destroy();
-
-    const canvas = this.textures.createCanvas(`${key}-label`, 160, 160);
-    const context = canvas?.getContext();
-    if (canvas && context) {
-      context.font = '700 70px sans-serif';
-      context.fillStyle = '#102033';
-      context.textAlign = 'center';
-      context.fillText(symbol, 80, 122);
-      canvas.refresh();
-    }
-  }
-
-  private createPowerTexture(key: string, label: string, color: number): void {
-    if (this.shouldSkipTexture(key)) {
-      return;
-    }
-
-    const graphics = this.make.graphics({ x: 0, y: 0 }, false);
-    graphics.fillStyle(0xffffff, 1);
-    graphics.fillCircle(64, 64, 58);
-    graphics.fillStyle(color, 1);
-    graphics.fillCircle(64, 64, 48);
-    graphics.lineStyle(6, 0xffd23f, 1);
-    graphics.strokeCircle(64, 64, 54);
-    graphics.generateTexture(key, 128, 128);
-    graphics.destroy();
-
-    const canvas = this.textures.createCanvas(`${key}-glyph`, 128, 128);
-    const context = canvas?.getContext();
-    if (canvas && context) {
-      context.font = '800 62px Georgia, serif';
-      context.fillStyle = '#ffffff';
-      context.textAlign = 'center';
-      context.textBaseline = 'middle';
-      context.fillText(label, 64, 69);
-      canvas.refresh();
-    }
-  }
-
-  private createStarTexture(): void {
-    if (this.shouldSkipTexture('star')) {
-      return;
-    }
-
-    const graphics = this.make.graphics({ x: 0, y: 0 }, false);
-    const points: Phaser.Geom.Point[] = [];
-    for (let index = 0; index < 10; index += 1) {
-      const angle = Phaser.Math.DegToRad(index * 36 - 90);
-      const radius = index % 2 === 0 ? 42 : 19;
-      points.push(new Phaser.Geom.Point(48 + Math.cos(angle) * radius, 48 + Math.sin(angle) * radius));
-    }
-    graphics.fillStyle(0xffd23f, 1);
-    graphics.fillPoints(points, true);
-    graphics.lineStyle(5, 0xffffff, 0.85);
-    graphics.strokePoints(points, true);
-    graphics.generateTexture('star', 96, 96);
     graphics.destroy();
   }
 

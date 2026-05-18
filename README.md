@@ -12,10 +12,11 @@ The game is designed for iPad Safari in landscape orientation, with desktop keyb
 
 ## Controls
 
-- Move left/right: on-screen arrows or `A` / `D`
-- Jump: on-screen jump button or `Space`
-- Slide/drop: on-screen slide button or `S`
-- Power: on-screen power button or `Shift`
+- Move left/right: hold on-screen `Back` / `Run`, arrow keys, or `A` / `D`
+- Jump: on-screen `Jump`, `ArrowUp`, or `W`
+- Slide/drop: on-screen `Slide`, `ArrowDown`, or `S`
+- Power: on-screen `Power` or `Space`
+- Start: `Space`, `Enter`, or the start button
 - Math gates and baking games: tap the large answer/action buttons
 
 ## Gameplay

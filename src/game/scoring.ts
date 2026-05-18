@@ -156,6 +156,19 @@ export const calculateTimeBonus = (activeElapsedMs: number, level: LevelDefiniti
   return Math.round(MAX_TIME_BONUS_POINTS * remainingRatio);
 };
 
+export const replaceScoreSummary = (summaries: ScoreSummary[], summary: ScoreSummary): ScoreSummary[] => {
+  const existingIndex = summaries.findIndex((existingSummary) => existingSummary.levelId === summary.levelId);
+
+  if (existingIndex < 0) {
+    return [...summaries, summary];
+  }
+
+  return summaries.map((existingSummary, index) => (index === existingIndex ? summary : existingSummary));
+};
+
+export const uniqueScoreSummaries = (summaries: ScoreSummary[]): ScoreSummary[] =>
+  summaries.reduce<ScoreSummary[]>((uniqueSummaries, summary) => replaceScoreSummary(uniqueSummaries, summary), []);
+
 export const formatScore = (score: number): string => Math.round(score).toLocaleString('en-US');
 
 export const formatTime = (milliseconds: number): string => {

@@ -6,7 +6,9 @@ import {
   calculateScoreFromLedger,
   calculateStars,
   formatScore,
-  formatTime
+  formatTime,
+  replaceScoreSummary,
+  uniqueScoreSummaries
 } from '../src/game/scoring';
 
 describe('scoring', () => {
@@ -154,5 +156,48 @@ describe('scoring', () => {
 
   it('formats score with thousands separators', () => {
     expect(formatScore(8750)).toBe('8,750');
+  });
+
+  it('replaces replayed level summaries instead of duplicating final totals', () => {
+    const firstAttempt = buildScoreSummary({
+      level: levels[0],
+      activeElapsedMs: levels[0].targetTimeMs,
+      mathCorrect: 1,
+      mathAttempts: 2,
+      hintsUsed: 1,
+      obstacleHits: 1,
+      completed: true,
+      thrusterPoints: 1000,
+      penaltyPoints: 100
+    });
+    const acceptedAttempt = buildScoreSummary({
+      level: levels[0],
+      activeElapsedMs: levels[0].targetTimeMs - 10000,
+      mathCorrect: 3,
+      mathAttempts: 3,
+      hintsUsed: 0,
+      obstacleHits: 0,
+      completed: true,
+      thrusterPoints: 1800,
+      mathPoints: 1200,
+      penaltyPoints: 0
+    });
+    const levelTwo = buildScoreSummary({
+      level: levels[1],
+      activeElapsedMs: levels[1].targetTimeMs,
+      mathCorrect: 1,
+      mathAttempts: 1,
+      hintsUsed: 0,
+      obstacleHits: 0,
+      completed: true,
+      bakingPoints: 850,
+      penaltyPoints: 0
+    });
+
+    const summaries = replaceScoreSummary(replaceScoreSummary([firstAttempt, levelTwo], acceptedAttempt), levelTwo);
+
+    expect(summaries).toHaveLength(2);
+    expect(summaries.find((summary) => summary.levelId === levels[0].id)?.score).toBe(acceptedAttempt.score);
+    expect(uniqueScoreSummaries([firstAttempt, levelTwo, acceptedAttempt])).toHaveLength(2);
   });
 });

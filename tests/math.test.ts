@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateProblem } from '../src/game/math';
+import { isMathGateResult } from '../src/game/mathGate';
 import type { MathCategory } from '../src/types';
 
 const seededRandom = (seed: number): (() => number) => {
@@ -41,5 +42,15 @@ describe('generateProblem', () => {
 
     expect(problem.prompt.length).toBeGreaterThan(10);
     expect(labels.every((label) => label.length > 0)).toBe(true);
+  });
+});
+
+describe('isMathGateResult', () => {
+  it('accepts valid math gate results and rejects malformed payloads', () => {
+    expect(isMathGateResult({ wrongAttempts: 1, hintUsed: true })).toBe(true);
+    expect(isMathGateResult({ wrongAttempts: -1, hintUsed: true })).toBe(false);
+    expect(isMathGateResult({ wrongAttempts: 1.5, hintUsed: false })).toBe(false);
+    expect(isMathGateResult({ wrongAttempts: 0 })).toBe(false);
+    expect(isMathGateResult(undefined)).toBe(false);
   });
 });

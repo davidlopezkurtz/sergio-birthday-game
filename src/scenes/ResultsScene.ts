@@ -70,13 +70,16 @@ export class ResultsScene extends Phaser.Scene {
       `Target score: ${formatScore(this.summary.targetScore)}`,
       `Thrusters: ${this.summary.thrustersCollected}/${this.summary.totalThrusters} (+${formatScore(this.summary.thrusterPoints)})`,
       `Obstacle clears: ${this.summary.obstacleClears} (+${formatScore(this.summary.obstaclePoints)})`,
-      `Math points: +${formatScore(this.summary.mathPoints)} | Accuracy ${this.summary.mathCorrect}/${this.summary.mathAttempts} (${accuracy})`,
+      `Math: +${formatScore(this.summary.mathPoints)}`,
+      `Accuracy: ${this.summary.mathCorrect}/${this.summary.mathAttempts} (${accuracy})`,
       ...(this.summary.totalBakingStations > 0
         ? [
-            `Bake-Off: ${this.summary.bakingStationsCompleted}/${this.summary.totalBakingStations} | Perfect ${this.summary.bakingPerfect}/${this.summary.totalBakingStations} (+${formatScore(this.summary.bakingPoints)})`
+            `Bake-Off: ${this.summary.bakingStationsCompleted}/${this.summary.totalBakingStations} (+${formatScore(this.summary.bakingPoints)})`,
+            `Perfect bakes: ${this.summary.bakingPerfect}/${this.summary.totalBakingStations}`
           ]
         : []),
-      `Combo bonus: +${formatScore(this.summary.comboBonus)} | Best combo x${this.summary.maxCombo}`
+      `Combo: +${formatScore(this.summary.comboBonus)}`,
+      `Best combo: x${this.summary.maxCombo}`
     ];
 
     const bonusLines = [

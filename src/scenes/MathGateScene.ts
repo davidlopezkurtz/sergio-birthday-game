@@ -1,15 +1,11 @@
 import Phaser from 'phaser';
+import type { MathGateResult } from '../game/mathGate';
 import type { MathProblem } from '../types';
 
 export interface MathGateSceneData {
   problem: MathProblem;
   eventKey: string;
   gateNumber: number;
-}
-
-interface MathGateResult {
-  wrongAttempts: number;
-  hintUsed: boolean;
 }
 
 export class MathGateScene extends Phaser.Scene {
@@ -19,6 +15,7 @@ export class MathGateScene extends Phaser.Scene {
   private answerLocked = false;
   private hintText?: Phaser.GameObjects.Text;
   private feedbackText?: Phaser.GameObjects.Text;
+  private keyBindings: { key: Phaser.Input.Keyboard.Key; handler: () => void }[] = [];
 
   constructor() {
     super('MathGateScene');
@@ -29,6 +26,7 @@ export class MathGateScene extends Phaser.Scene {
     this.eventKey = data.eventKey;
     this.wrongAttempts = 0;
     this.answerLocked = false;
+    this.keyBindings = [];
   }
 
   create(data: MathGateSceneData): void {
@@ -77,6 +75,7 @@ export class MathGateScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.createAnswerButtons();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanupKeyboardHandlers());
   }
 
   private createAnswerButtons(): void {
@@ -119,7 +118,12 @@ export class MathGateScene extends Phaser.Scene {
       Phaser.Input.Keyboard.KeyCodes.FOUR
     ].forEach((keyCode, index) => {
       const key = this.input.keyboard?.addKey(keyCode);
-      key?.on('down', () => this.answer(answerValues[index], backgrounds[index]));
+      const handler = () => this.answer(answerValues[index], backgrounds[index]);
+      key?.on('down', handler);
+
+      if (key) {
+        this.keyBindings.push({ key, handler });
+      }
     });
   }
 
@@ -150,5 +154,10 @@ export class MathGateScene extends Phaser.Scene {
     background.setFillStyle(0xf05f73);
     this.feedbackText?.setText('Try again. The cat can still win.');
     this.hintText?.setText(`Hint: ${this.problem.hint}`);
+  }
+
+  private cleanupKeyboardHandlers(): void {
+    this.keyBindings.forEach(({ key, handler }) => key.off('down', handler));
+    this.keyBindings = [];
   }
 }

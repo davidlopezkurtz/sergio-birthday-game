@@ -75,14 +75,17 @@ export class BakingMiniGameScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(640, 208, `Total possible: +${this.station.value + this.station.perfectBonus} | Perfect bonus needs zero misses`, {
+      .text(740, 210, `Total possible: +${this.station.value + this.station.perfectBonus}\nPerfect bonus needs zero misses`, {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '21px',
+        fontSize: '22px',
         color: '#6b4a8c',
         fontStyle: '900',
-        align: 'center'
+        align: 'center',
+        lineSpacing: 4,
+        wordWrap: { width: 520 }
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(3);
 
     this.drawCupcakePreview();
     this.createRecipeSlots();
@@ -140,7 +143,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
 
   private createRecipeSlots(): void {
     this.add
-      .text(720, 242, 'Recipe order', {
+      .text(720, 260, 'Recipe order', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '24px',
         color: '#2f4056',
@@ -151,9 +154,9 @@ export class BakingMiniGameScene extends Phaser.Scene {
     const startX = 580;
     this.station.recipe.forEach((ingredient, index) => {
       const x = startX + index * 140;
-      const slot = this.add.rectangle(x, 300, 112, 78, 0xfff4c7, 1).setStrokeStyle(4, 0x102033);
+      const slot = this.add.rectangle(x, 316, 112, 78, 0xfff4c7, 1).setStrokeStyle(4, 0x102033);
       const text = this.add
-        .text(x, 300, `${index + 1}. ${this.ingredientLabel(ingredient)}`, {
+        .text(x, 316, `${index + 1}. ${this.ingredientLabel(ingredient)}`, {
           fontFamily: 'Arial, sans-serif',
           fontSize: '18px',
           color: '#102033',

@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
-import { assetsByKey, type AssetKey } from '../assets/assetManifest';
+import { assetsByKey, resolveAssetUrl, type AssetKey } from '../assets/assetManifest';
 import { levels } from '../data/levels';
 import { calculateBakingAward, isBakingStationResult } from '../game/baking';
 import { generateProblemForLevel } from '../game/math';
+import { isMathGateResult } from '../game/mathGate';
 import {
   FIRST_TRY_MATH_POINTS,
   OBSTACLE_CLEAR_POINTS,
@@ -12,7 +13,8 @@ import {
   calculateAppliedPenalty,
   calculateScoreFromLedger,
   formatScore,
-  formatTime
+  formatTime,
+  replaceScoreSummary
 } from '../game/scoring';
 import type {
   ActionType,
@@ -55,11 +57,6 @@ interface BakingStationObject {
   base: Phaser.GameObjects.Rectangle;
   frosting: Phaser.GameObjects.Arc;
   label: Phaser.GameObjects.Text;
-}
-
-interface MathGateResult {
-  wrongAttempts: number;
-  hintUsed: boolean;
 }
 
 const GROUND_Y = 560;
@@ -198,6 +195,54 @@ export class PlayScene extends Phaser.Scene {
     this.lastJumpAt = Number.NEGATIVE_INFINITY;
     this.lastSlideAt = Number.NEGATIVE_INFINITY;
     this.lastPowerAt = Number.NEGATIVE_INFINITY;
+  }
+
+  preload(): void {
+    const assetsToLoad = this.levelAssetKeys()
+      .map((key) => assetsByKey[key])
+      .filter((asset) => !this.textures.exists(asset.key));
+
+    if (assetsToLoad.length === 0) {
+      return;
+    }
+
+    this.cameras.main.setBackgroundColor(this.level.palette.skyTop);
+    const loadingBackdrop = this.add.rectangle(640, 360, 1280, 720, this.level.palette.skyTop, 1);
+    const loadingPanel = this.add.rectangle(640, 360, 720, 210, 0xffffff, 0.92).setStrokeStyle(6, 0xffd23f);
+    const loadingText = this.add
+      .text(640, 314, `Loading ${this.level.title}`, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '32px',
+        color: '#102033',
+        fontStyle: '900',
+        align: 'center'
+      })
+      .setOrigin(0.5);
+    const progressFill = this.add.rectangle(392, 388, 0, 22, 0x27b6a5, 1).setOrigin(0, 0.5);
+    const progressTrack = this.add.rectangle(640, 388, 500, 22, 0x102033, 0.12).setStrokeStyle(3, 0x102033, 0.55);
+
+    const updateProgress = (value: number) => {
+      progressFill.width = 496 * value;
+      loadingText.setText(`Loading ${this.level.title} ${Math.round(value * 100)}%`);
+    };
+
+    this.load.on('progress', updateProgress);
+    this.load.once('complete', () => {
+      this.load.off('progress', updateProgress);
+      loadingBackdrop.destroy();
+      loadingPanel.destroy();
+      loadingText.destroy();
+      progressFill.destroy();
+      progressTrack.destroy();
+    });
+
+    for (const asset of assetsToLoad) {
+      const devicePixelRatio = asset.kind === 'Background' ? 1 : window.devicePixelRatio;
+      const assetUrl = resolveAssetUrl(asset, devicePixelRatio);
+      if (assetUrl) {
+        this.load.image(asset.key, assetUrl);
+      }
+    }
   }
 
   create(): void {
@@ -631,13 +676,24 @@ export class PlayScene extends Phaser.Scene {
       .setOrigin(0.5);
     const hitZone = this.add.zone(0, 0, size, size).setInteractive({ useHandCursor: true });
 
-    const toggleMove = () => {
-      this.touchMoveDirection = this.touchMoveDirection === direction ? 0 : direction;
-      circle.setAlpha(this.touchMoveDirection === direction ? 1 : 0.92);
+    const beginMove = () => {
+      this.touchMoveDirection = direction;
+      circle.setAlpha(1);
+      circle.setScale(1.07);
+    };
+    const endMove = () => {
+      if (this.touchMoveDirection === direction) {
+        this.touchMoveDirection = 0;
+      }
+      circle.setAlpha(0.92);
+      circle.setScale(1);
     };
 
     container.add([circle, text, hitZone]);
-    hitZone.on('pointerdown', toggleMove);
+    hitZone.on('pointerdown', beginMove);
+    hitZone.on('pointerup', endMove);
+    hitZone.on('pointerout', endMove);
+    hitZone.on('pointerupoutside', endMove);
   }
 
   private handleKeyboardInput(): void {
@@ -860,25 +916,62 @@ export class PlayScene extends Phaser.Scene {
       }
 
       this.activeGate = true;
-      this.gatesSolved.add(index);
       const problem = generateProblemForLevel(this.level.mathCategories);
       const eventKey = `math-gate-${this.level.id}-${index}-${Date.now()}`;
+      const mathGateScene = this.scene.get('MathGateScene');
+      let settled = false;
+      let onResult: (result: unknown) => void;
 
-      this.game.events.once(eventKey, (result: MathGateResult) => {
+      const recoverWithoutResult = () => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        this.game.events.off(eventKey, onResult);
+        mathGateScene.events.off(Phaser.Scenes.Events.SHUTDOWN, recoverWithoutResult);
+        this.activeGate = false;
+        this.scene.resume();
+
+        if (this.scene.isActive('MathGateScene')) {
+          this.scene.stop('MathGateScene');
+        }
+      };
+
+      onResult = (result: unknown) => {
+        if (settled) {
+          return;
+        }
+
+        if (!isMathGateResult(result)) {
+          recoverWithoutResult();
+          return;
+        }
+
+        settled = true;
+        mathGateScene.events.off(Phaser.Scenes.Events.SHUTDOWN, recoverWithoutResult);
+        this.gatesSolved.add(index);
         this.mathCorrect += 1;
         this.mathAttempts += 1 + result.wrongAttempts;
         this.hintsUsed += result.hintUsed ? 1 : 0;
         this.awardMathGatePoints(result.wrongAttempts);
         this.activeGate = false;
         this.scene.resume();
-      });
+      };
 
-      this.scene.pause();
-      this.scene.launch('MathGateScene', {
-        problem,
-        eventKey,
-        gateNumber: index + 1
-      });
+      this.game.events.once(eventKey, onResult);
+      mathGateScene.events.once(Phaser.Scenes.Events.SHUTDOWN, recoverWithoutResult);
+
+      try {
+        this.scene.pause();
+        this.scene.launch('MathGateScene', {
+          problem,
+          eventKey,
+          gateNumber: index + 1
+        });
+      } catch {
+        recoverWithoutResult();
+      }
 
       return;
     }
@@ -914,7 +1007,7 @@ export class PlayScene extends Phaser.Scene {
     });
 
     const summaries = (this.registry.get('scoreSummaries') ?? []) as ScoreSummary[];
-    this.registry.set('scoreSummaries', [...summaries, summary]);
+    this.registry.set('scoreSummaries', replaceScoreSummary(summaries, summary));
     this.scene.start('ResultsScene', { levelIndex: this.level.index, summary });
   }
 
@@ -1410,7 +1503,7 @@ export class PlayScene extends Phaser.Scene {
 
   private startCountdown(): void {
     this.countdownText = this.add
-      .text(640, 350, 'Tap Run', {
+      .text(640, 350, 'Hold Run', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '58px',
         color: '#102033',
@@ -1422,7 +1515,7 @@ export class PlayScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(35);
 
-    this.time.delayedCall(900, () => this.countdownText?.setText('You control the pace'));
+    this.time.delayedCall(900, () => this.countdownText?.setText('Hold Run'));
     this.time.delayedCall(COUNTDOWN_MS, () => {
       this.countdownText?.destroy();
       this.countdownText = undefined;
@@ -1465,6 +1558,28 @@ export class PlayScene extends Phaser.Scene {
       default:
         return 'yarn';
     }
+  }
+
+  private levelAssetKeys(): AssetKey[] {
+    const keys = new Set<AssetKey>([
+      'cat',
+      'catSlide',
+      'catJump',
+      'catHurt',
+      'catVictory',
+      'gate',
+      'rook',
+      'knight',
+      'bishop',
+      'queen',
+      'star',
+      this.levelBackgroundAssetKey(),
+      this.platformAssetKey()
+    ]);
+
+    this.level.obstacles.forEach((obstacle) => keys.add(this.obstacleAssetKey(obstacle.kind)));
+
+    return [...keys];
   }
 
   private levelBackgroundAssetKey(): AssetKey {
