@@ -46,22 +46,29 @@ interface StationButtonState {
   baseColor: number;
 }
 
-interface AnchorGuide {
-  pieces: Record<string, {
-    anchor: { x: number; y: number };
-    stackOffset: { x: number; y: number };
-  }>;
+interface RackAnchorGuide {
   rackSlots: Record<string, { x: number; y: number }[]>;
 }
 
 const BAKE_RUSH_TIME_LIMIT_MS = 42000;
 const WRONG_TAP_TIME_PENALTY_MS = 2200;
+const TICKET_PANEL_CENTER_X = 300;
+const TICKET_PANEL_CENTER_Y = 236;
+const TICKET_SLOT_CENTER_X = TICKET_PANEL_CENTER_X;
+const PROMPT_CENTER_X = 640;
+const PROMPT_NORMAL_Y = 500;
+const PROMPT_MATH_Y = 506;
+const SERVE_METER_Y = 548;
 const SERVE_METER_LEFT = 538;
 const SERVE_METER_RIGHT = 742;
 const SERVE_SWEET_LEFT = 613;
 const SERVE_SWEET_RIGHT = 667;
+const SERVE_METER_WIDTH = SERVE_METER_RIGHT - SERVE_METER_LEFT;
+const SERVE_SWEET_WIDTH = SERVE_SWEET_RIGHT - SERVE_SWEET_LEFT;
+const SERVE_METER_CENTER_X = (SERVE_METER_LEFT + SERVE_METER_RIGHT) / 2;
+const SERVE_SWEET_CENTER_X = (SERVE_SWEET_LEFT + SERVE_SWEET_RIGHT) / 2;
 const SERVE_METER_SPEED = 340;
-const trayAnchorGuide = JSON.parse(trayPieceAnchorGuideJson) as AnchorGuide;
+const rackAnchorGuide = JSON.parse(trayPieceAnchorGuideJson) as RackAnchorGuide;
 
 const STATIONS: StationDisplay[] = [
   { step: 'base', label: 'Base', shortLabel: 'Base', color: 0xd56b6b, textColor: '#ffffff' },
@@ -271,25 +278,25 @@ export class BakingMiniGameScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.feedbackText = this.add
-      .text(640, 530, 'Match the ticket, then serve on green.', {
+      .text(640, 102, 'Match the ticket, then serve on green.', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '19px',
+        fontSize: '17px',
         color: '#2f4056',
         fontStyle: '900',
         align: 'center',
-        wordWrap: { width: 760 }
+        wordWrap: { width: 430 }
       })
       .setOrigin(0.5)
       .setDepth(22);
 
     this.statusText = this.add
-      .text(640, 558, '', {
+      .text(640, 126, '', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '15px',
         color: '#6b4a8c',
         fontStyle: '900',
         align: 'center',
-        wordWrap: { width: 760 }
+        wordWrap: { width: 430 }
       })
       .setOrigin(0.5)
       .setDepth(22);
@@ -297,16 +304,16 @@ export class BakingMiniGameScene extends Phaser.Scene {
 
   private createTicketPanel(): void {
     this.addBakeoffImage('ticket-stack', 206, 208, 2)?.setDisplaySize(134, 92).setAlpha(0.8);
-    const ticket = this.addBakeoffImage('judge-ticket', 300, 236, 2);
+    const ticket = this.addBakeoffImage('judge-ticket', TICKET_PANEL_CENTER_X, TICKET_PANEL_CENTER_Y, 2);
     if (ticket) {
       ticket.setDisplaySize(364, 182);
     } else {
-      this.add.rectangle(300, 236, 364, 182, 0xffffff, 1).setStrokeStyle(6, 0x102033);
+      this.add.rectangle(TICKET_PANEL_CENTER_X, TICKET_PANEL_CENTER_Y, 364, 182, 0xffffff, 1).setStrokeStyle(6, 0x102033);
     }
     this.addBakeoffImage('ticket-next-tab', 458, 154, 3)?.setDisplaySize(78, 46);
     this.addBakeoffImage('ticket-priority-star', 152, 137, 3)?.setDisplaySize(44, 44);
     this.ticketTitleText = this.add
-      .text(300, 137, '', {
+      .text(TICKET_PANEL_CENTER_X, 137, '', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '22px',
         color: '#102033',
@@ -316,7 +323,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(5);
     this.ticketProgressText = this.add
-      .text(300, 166, '', {
+      .text(TICKET_PANEL_CENTER_X, 166, '', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '16px',
         color: '#6b4a8c',
@@ -326,7 +333,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(5);
     this.ticketRecipeText = this.add
-      .text(300, 312, '', {
+      .text(TICKET_PANEL_CENTER_X, 312, '', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '15px',
         color: '#2f4056',
@@ -367,11 +374,14 @@ export class BakingMiniGameScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    this.promptBack = this.add.rectangle(640, 464, 720, 62, 0xfffcf1, 0.94).setStrokeStyle(3, 0xffd23f, 0.78).setDepth(20);
+    this.promptBack = this.add
+      .rectangle(PROMPT_CENTER_X, PROMPT_NORMAL_Y, 720, 64, 0xfffcf1, 0.96)
+      .setStrokeStyle(3, 0xffd23f, 0.78)
+      .setDepth(20);
     this.promptText = this.add
-      .text(640, 464, '', {
+      .text(PROMPT_CENTER_X, PROMPT_NORMAL_Y, '', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '22px',
+        fontSize: '21px',
         color: '#102033',
         fontStyle: '900',
         align: 'center',
@@ -380,17 +390,17 @@ export class BakingMiniGameScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(21);
 
-    this.serveMeterTrack = this.addBakeoffImage('serve-meter-track', 640, 494, 5) ??
-      this.add.rectangle(640, 494, 240, 18, 0x102033, 0.24).setStrokeStyle(3, 0x102033, 0.45);
-    this.serveMeterTrack.setDisplaySize(244, 48);
-    this.serveSweetZone = this.addBakeoffImage('serve-meter-sweet-zone', 640, 494, 6) ??
-      this.add.rectangle(640, 494, SERVE_SWEET_RIGHT - SERVE_SWEET_LEFT, 26, 0x38a16d, 0.95);
-    this.serveSweetZone.setDisplaySize(68, 48);
-    this.serveMarker = this.addBakeoffImage('serve-meter-marker', this.serveMarkerX, 494, 7) ??
-      this.add.rectangle(this.serveMarkerX, 494, 14, 40, 0xffd23f, 1).setStrokeStyle(2, 0x102033);
+    this.serveMeterTrack = this.addBakeoffImage('serve-meter-track', SERVE_METER_CENTER_X, SERVE_METER_Y, 5) ??
+      this.add.rectangle(SERVE_METER_CENTER_X, SERVE_METER_Y, SERVE_METER_WIDTH, 18, 0x102033, 0.24).setStrokeStyle(3, 0x102033, 0.45);
+    this.serveMeterTrack.setDisplaySize(SERVE_METER_WIDTH + 32, 46);
+    this.serveSweetZone = this.addBakeoffImage('serve-meter-sweet-zone', SERVE_SWEET_CENTER_X, SERVE_METER_Y, 6) ??
+      this.add.rectangle(SERVE_SWEET_CENTER_X, SERVE_METER_Y, SERVE_SWEET_WIDTH, 26, 0x38a16d, 0.95);
+    this.serveSweetZone.setDisplaySize(SERVE_SWEET_WIDTH, 46);
+    this.serveMarker = this.addBakeoffImage('serve-meter-marker', this.serveMarkerX, SERVE_METER_Y, 7) ??
+      this.add.rectangle(this.serveMarkerX, SERVE_METER_Y, 14, 40, 0xffd23f, 1).setStrokeStyle(2, 0x102033);
     this.serveMarker.setDisplaySize(26, 58);
     this.serveMeterText = this.add
-      .text(640, 512, 'Serve on green', {
+      .text(SERVE_METER_CENTER_X, SERVE_METER_Y + 28, 'Serve on green', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '15px',
         color: '#102033',
@@ -725,7 +735,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
   }
 
   private addCompletedTreat(cleanServe: boolean): void {
-    const rackSlot = trayAnchorGuide.rackSlots['judge-rack']?.[this.currentTicketIndex];
+    const rackSlot = rackAnchorGuide.rackSlots['judge-rack']?.[this.currentTicketIndex];
     const x = rackSlot ? 470 + rackSlot.x * 340 : 560 + this.currentTicketIndex * 80;
     const y = rackSlot ? 128 + rackSlot.y * 208 : 224;
     const container = this.add.container(x, y).setDepth(8);
@@ -762,8 +772,8 @@ export class BakingMiniGameScene extends Phaser.Scene {
     this.ticketTitleText?.setText('Multiplier Math');
     this.ticketProgressText?.setText('Final judge question');
     this.ticketRecipeText?.setText(`${this.order.treatCount} treats x ${this.order.perTreat} topping moves each`);
-    this.promptBack?.setPosition(640, 474).setDisplaySize(760, 84).setDepth(23);
-    this.promptText?.setPosition(640, 474).setDepth(24);
+    this.promptBack?.setPosition(PROMPT_CENTER_X, PROMPT_MATH_Y).setDisplaySize(760, 76).setDepth(23);
+    this.promptText?.setPosition(PROMPT_CENTER_X, PROMPT_MATH_Y).setDepth(24);
     this.promptText?.setText(this.order.mathPrompt);
     this.feedbackText?.setText('Answer the batch math to lock in the score multiplier.');
     this.updateStatusText();
@@ -961,7 +971,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
     this.ticketRecipeText?.setText(`Recipe: ${ticket.ingredientSteps.map((step) => this.stepLabel(step)).join(' + ')}`);
 
     const gap = Math.min(64, 322 / Math.max(1, ticket.steps.length - 1));
-    const startX = 306 - ((ticket.steps.length - 1) * gap) / 2;
+    const startX = TICKET_SLOT_CENTER_X - ((ticket.steps.length - 1) * gap) / 2;
     ticket.steps.forEach((step, index) => {
       const x = startX + index * gap;
       const isCurrent = index === this.currentStepIndex;

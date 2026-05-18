@@ -50,18 +50,6 @@ import hurdleTowerUrl from './images/hurdle-tower.png';
 import hurdleTowerHighDpiUrl from './images/hurdle-tower-2x.png';
 import knightUrl from './images/knight-beast.png';
 import knightHighDpiUrl from './images/knight-beast-2x.png';
-import levelBirthdayBeastTowerBgUrl from './images/level-birthday-beast-tower-bg.png';
-import levelBirthdayBeastTowerBgHighDpiUrl from './images/level-birthday-beast-tower-bg-2x.png';
-import levelFrostingFactoryBgUrl from './images/level-frosting-factory-bg.png';
-import levelFrostingFactoryBgHighDpiUrl from './images/level-frosting-factory-bg-2x.png';
-import levelYarnYardBgUrl from './images/level-yarn-yard-bg.png';
-import levelYarnYardBgHighDpiUrl from './images/level-yarn-yard-bg-2x.png';
-import lowBarrierYarnUrl from './images/lowBarrier-yarn.png';
-import lowBarrierYarnHighDpiUrl from './images/lowBarrier-yarn-2x.png';
-import lowBarrierBakeryUrl from './images/lowBarrier-bakery.png';
-import lowBarrierBakeryHighDpiUrl from './images/lowBarrier-bakery-2x.png';
-import lowBarrierTowerUrl from './images/lowBarrier-tower.png';
-import lowBarrierTowerHighDpiUrl from './images/lowBarrier-tower-2x.png';
 import platformBakeryUrl from './images/platform-bakery.png';
 import platformBakeryHighDpiUrl from './images/platform-bakery-2x.png';
 import platformTowerUrl from './images/platform-tower.png';
@@ -74,12 +62,6 @@ import rookUrl from './images/rook-beast.png';
 import rookHighDpiUrl from './images/rook-beast-2x.png';
 import starUrl from './images/star-beast.png';
 import starHighDpiUrl from './images/star-beast-2x.png';
-import swingYarnUrl from './images/swing-yarn.png';
-import swingYarnHighDpiUrl from './images/swing-yarn-2x.png';
-import swingBakeryUrl from './images/swing-bakery.png';
-import swingBakeryHighDpiUrl from './images/swing-bakery-2x.png';
-import swingTowerUrl from './images/swing-tower.png';
-import swingTowerHighDpiUrl from './images/swing-tower-2x.png';
 
 const imageUrls = import.meta.glob(
   [
@@ -328,14 +310,6 @@ export type AssetKey =
   | 'hurdle-yarn'
   | 'hurdle-bakery'
   | 'hurdle-tower'
-  | 'lowBarrier'
-  | 'lowBarrier-yarn'
-  | 'lowBarrier-bakery'
-  | 'lowBarrier-tower'
-  | 'swing'
-  | 'swing-yarn'
-  | 'swing-bakery'
-  | 'swing-tower'
   | 'frostingPit'
   | 'cakeWall'
   | 'rook'
@@ -343,9 +317,6 @@ export type AssetKey =
   | 'bishop'
   | 'queen'
   | 'star'
-  | 'level-yarn-yard-bg'
-  | 'level-frosting-factory-bg'
-  | 'level-birthday-beast-tower-bg'
   | 'platform-yarn'
   | 'platform-bakery'
   | 'platform-tower'
@@ -789,78 +760,6 @@ export const assetManifest: AssetManifestEntry[] = [
     highDpiUrl: hurdleTowerHighDpiUrl
   },
   {
-    key: 'lowBarrier',
-    description: 'Default Yarn Yard slide-under tunnel',
-    width: 160,
-    height: 160,
-    kind: 'Obstacle',
-    url: lowBarrierYarnUrl,
-    highDpiUrl: lowBarrierYarnHighDpiUrl
-  },
-  {
-    key: 'lowBarrier-yarn',
-    description: 'Yarn Yard knit slide-under tunnel',
-    width: 160,
-    height: 160,
-    kind: 'Obstacle',
-    url: lowBarrierYarnUrl,
-    highDpiUrl: lowBarrierYarnHighDpiUrl
-  },
-  {
-    key: 'lowBarrier-bakery',
-    description: 'Frosting Factory buttercream slide-under wall',
-    width: 160,
-    height: 160,
-    kind: 'Obstacle',
-    url: lowBarrierBakeryUrl,
-    highDpiUrl: lowBarrierBakeryHighDpiUrl
-  },
-  {
-    key: 'lowBarrier-tower',
-    description: 'Birthday Beast Tower bunting slide-under drape',
-    width: 160,
-    height: 160,
-    kind: 'Obstacle',
-    url: lowBarrierTowerUrl,
-    highDpiUrl: lowBarrierTowerHighDpiUrl
-  },
-  {
-    key: 'swing',
-    description: 'Default Yarn Yard swinging timing obstacle',
-    width: 160,
-    height: 160,
-    kind: 'Obstacle',
-    url: swingYarnUrl,
-    highDpiUrl: swingYarnHighDpiUrl
-  },
-  {
-    key: 'swing-yarn',
-    description: 'Yarn Yard swinging yarn-ball timing obstacle',
-    width: 160,
-    height: 160,
-    kind: 'Obstacle',
-    url: swingYarnUrl,
-    highDpiUrl: swingYarnHighDpiUrl
-  },
-  {
-    key: 'swing-bakery',
-    description: 'Frosting Factory swinging donut timing obstacle',
-    width: 160,
-    height: 160,
-    kind: 'Obstacle',
-    url: swingBakeryUrl,
-    highDpiUrl: swingBakeryHighDpiUrl
-  },
-  {
-    key: 'swing-tower',
-    description: 'Birthday Beast Tower swinging gift timing obstacle',
-    width: 160,
-    height: 160,
-    kind: 'Obstacle',
-    url: swingTowerUrl,
-    highDpiUrl: swingTowerHighDpiUrl
-  },
-  {
     key: 'frostingPit',
     description: 'Glossy frosting slick jump-over hazard',
     width: 160,
@@ -922,33 +821,6 @@ export const assetManifest: AssetManifestEntry[] = [
     kind: 'Score',
     url: starUrl,
     highDpiUrl: starHighDpiUrl
-  },
-  {
-    key: 'level-yarn-yard-bg',
-    description: 'Yarn Yard side-scrolling backdrop',
-    width: 1280,
-    height: 720,
-    kind: 'Background',
-    url: levelYarnYardBgUrl,
-    highDpiUrl: levelYarnYardBgHighDpiUrl
-  },
-  {
-    key: 'level-frosting-factory-bg',
-    description: 'Frosting Factory side-scrolling backdrop',
-    width: 1280,
-    height: 720,
-    kind: 'Background',
-    url: levelFrostingFactoryBgUrl,
-    highDpiUrl: levelFrostingFactoryBgHighDpiUrl
-  },
-  {
-    key: 'level-birthday-beast-tower-bg',
-    description: 'Birthday Beast Tower side-scrolling backdrop',
-    width: 1280,
-    height: 720,
-    kind: 'Background',
-    url: levelBirthdayBeastTowerBgUrl,
-    highDpiUrl: levelBirthdayBeastTowerBgHighDpiUrl
   },
   {
     key: 'platform-yarn',

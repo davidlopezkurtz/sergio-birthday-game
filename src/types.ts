@@ -60,6 +60,14 @@ export interface PointThrusterDefinition {
   label?: string;
 }
 
+export interface PowerBadgeDefinition {
+  id: string;
+  x: number;
+  y: number;
+  powerup: PowerupType;
+  label?: string;
+}
+
 export interface BakingStationDefinition {
   id: string;
   x: number;
@@ -104,6 +112,7 @@ export interface LevelDefinition {
   ladders?: CourseLadderDefinition[];
   obstacles: ObstacleDefinition[];
   pointThrusters: PointThrusterDefinition[];
+  powerBadges: PowerBadgeDefinition[];
   bakingStations: BakingStationDefinition[];
   palette: LevelPalette;
 }

@@ -88,6 +88,10 @@ export const levels: LevelDefinition[] = [
       { id: 'yy-thruster-high-2', x: 930, y: FLOOR_4_Y - 112, value: 500, requiredAction: 'jump', kind: 'risky' },
       { id: 'yy-thruster-summit', x: 1060, y: TOP_Y - 76, value: 750, requiredAction: 'power', kind: 'risky' }
     ],
+    powerBadges: [
+      { id: 'yy-rook-badge', x: 780, y: TOP_Y - 92, powerup: 'rook', label: 'Rook Dash' },
+      { id: 'yy-knight-badge', x: 460, y: FLOOR_4_Y - 104, powerup: 'knight', label: 'Knight Jump' }
+    ],
     bakingStations: []
   },
   {
@@ -145,6 +149,10 @@ export const levels: LevelDefinition[] = [
       { id: 'ff-thruster-floor-3', x: 830, y: FLOOR_3_Y - 86, value: 500, requiredAction: 'slide', kind: 'risky' },
       { id: 'ff-thruster-bake-2', x: 720, y: FLOOR_4_Y - 120, value: 500, requiredAction: 'jump', kind: 'risky' },
       { id: 'ff-thruster-summit', x: 1050, y: TOP_Y - 76, value: 750, requiredAction: 'power', kind: 'risky' }
+    ],
+    powerBadges: [
+      { id: 'ff-knight-badge', x: 800, y: TOP_Y - 92, powerup: 'knight', label: 'Knight Jump' },
+      { id: 'ff-bishop-badge', x: 500, y: FLOOR_4_Y - 104, powerup: 'bishop', label: 'Bishop Leap' }
     ],
     bakingStations: []
   },
@@ -204,6 +212,10 @@ export const levels: LevelDefinition[] = [
       { id: 'bt-thruster-high-1', x: 300, y: FLOOR_4_Y - 120, value: 750, requiredAction: 'jump', kind: 'risky' },
       { id: 'bt-thruster-high-2', x: 900, y: FLOOR_4_Y - 112, value: 750, requiredAction: 'power', kind: 'risky' },
       { id: 'bt-thruster-summit', x: 1080, y: TOP_Y - 76, value: 1000, requiredAction: 'power', kind: 'multiplier' }
+    ],
+    powerBadges: [
+      { id: 'bt-queen-badge', x: 830, y: TOP_Y - 92, powerup: 'queen', label: 'Queen Shield' },
+      { id: 'bt-bishop-badge', x: 500, y: FLOOR_4_Y - 104, powerup: 'bishop', label: 'Bishop Leap' }
     ],
     bakingStations: []
   }
