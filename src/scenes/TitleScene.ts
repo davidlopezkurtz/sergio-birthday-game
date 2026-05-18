@@ -88,24 +88,26 @@ export class TitleScene extends Phaser.Scene {
       .text(640, 101, "Sergio's Cat Beast Birthday", {
         fontFamily: 'Arial, sans-serif',
         fontSize: '44px',
-        color: '#ffffff',
+        color: '#102033',
         fontStyle: '900',
         align: 'center',
         wordWrap: { width: 650 }
       })
       .setOrigin(0.5)
+      .setStroke('#fff4c7', 7)
       .setDepth(6);
 
     this.add
       .text(640, 166, 'Climb, dodge, grab pastries, then win the bake-off.', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '24px',
-        color: '#ffec9f',
+        color: '#2f4056',
         fontStyle: '900',
         align: 'center',
         wordWrap: { width: 650 }
       })
       .setOrigin(0.5)
+      .setStroke('#fff4c7', 4)
       .setDepth(6);
   }
 
@@ -152,13 +154,14 @@ export class TitleScene extends Phaser.Scene {
     this.startButton.setInteractive({ useHandCursor: true });
 
     this.add
-      .text(640, 584, 'Start the Score Chase', {
+      .text(640, 584, 'Start Game', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '30px',
-        color: '#102033',
+        fontSize: '34px',
+        color: '#ffffff',
         fontStyle: '900'
       })
       .setOrigin(0.5)
+      .setStroke('#102033', 5)
       .setDepth(7);
 
     this.startButton.on('pointerdown', () => this.startGame());

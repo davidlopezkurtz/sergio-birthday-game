@@ -40,7 +40,7 @@ interface ObstacleObject {
 interface PlatformObject {
   definition: CoursePlatformDefinition;
   body: Phaser.GameObjects.Rectangle | Phaser.GameObjects.TileSprite;
-  label: Phaser.GameObjects.Text;
+  edge?: Phaser.GameObjects.TileSprite;
 }
 
 interface ThrusterObject {
@@ -49,6 +49,13 @@ interface ThrusterObject {
   core: Phaser.GameObjects.Arc | Phaser.GameObjects.Image;
   sprinkles: Array<Phaser.GameObjects.Arc | Phaser.GameObjects.Image>;
   valueText: Phaser.GameObjects.Text;
+}
+
+interface PowerBadgeObject {
+  power: PowerupType;
+  sprite: Phaser.GameObjects.Image;
+  ring: Phaser.GameObjects.Arc;
+  collected: boolean;
 }
 
 const DEFAULT_GROUND_Y = 560;
@@ -78,6 +85,7 @@ const CONTROL_ALPHA_TOUCH = 0.58;
 const CONTROL_ALPHA_DESKTOP = 0.2;
 const CONTROL_ALPHA_PRESSED = 0.88;
 const COURSE_BAND_ALPHA = 0.16;
+const POWER_BADGE_PICKUP_RADIUS = 92;
 const PICKUP_ASSET_BY_ACTION: Record<ActionType, AssetKey> = {
   jump: 'treat-cupcake-base',
   slide: 'treat-donut-base',
@@ -153,7 +161,8 @@ export class PlayScene extends Phaser.Scene {
   private activeBakingStation = false;
   private activePower = false;
   private activePowerType?: PowerupType;
-  private powerReady = true;
+  private heldPower?: PowerupType;
+  private powerReady = false;
   private powerUseCount = 0;
   private sliding = false;
   private completed = false;
@@ -164,9 +173,12 @@ export class PlayScene extends Phaser.Scene {
   private progressText?: Phaser.GameObjects.Text;
   private powerText?: Phaser.GameObjects.Text;
   private powerIcon?: Phaser.GameObjects.Image;
+  private powerButtonCircle?: Phaser.GameObjects.Arc;
+  private powerButtonGlow?: Phaser.GameObjects.Arc;
   private platforms: PlatformObject[] = [];
   private obstacles: ObstacleObject[] = [];
   private thrusters: ThrusterObject[] = [];
+  private powerBadges: PowerBadgeObject[] = [];
   private verticalVelocity = 0;
   private onGround = true;
   private currentSurfaceY = DEFAULT_GROUND_Y;
@@ -218,7 +230,8 @@ export class PlayScene extends Phaser.Scene {
     this.activeBakingStation = false;
     this.activePower = false;
     this.activePowerType = undefined;
-    this.powerReady = true;
+    this.heldPower = undefined;
+    this.powerReady = false;
     this.powerUseCount = 0;
     this.sliding = false;
     this.completed = false;
@@ -227,6 +240,7 @@ export class PlayScene extends Phaser.Scene {
     this.platforms = [];
     this.obstacles = [];
     this.thrusters = [];
+    this.powerBadges = [];
     this.verticalVelocity = 0;
     this.onGround = true;
     this.currentSurfaceY = this.groundY;
@@ -299,9 +313,11 @@ export class PlayScene extends Phaser.Scene {
     this.createPlatforms();
     this.createObstacles();
     this.createPointThrusters();
+    this.createPowerBadges();
     this.createCat();
     this.createHud();
     this.createControls();
+    this.updatePowerAvailabilityVisual();
     this.startCountdown();
 
     this.cameras.main.startFollow(this.cat, true, 0.14, 0.14, 0, 30);
@@ -335,6 +351,7 @@ export class PlayScene extends Phaser.Scene {
 
     this.checkObstacleOverlaps();
     this.checkThrusterOverlaps();
+    this.checkPowerBadgeOverlaps();
     this.checkLevelComplete();
     this.updateHud();
   }
@@ -382,7 +399,15 @@ export class PlayScene extends Phaser.Scene {
       this.level.palette.ground,
       0.46
     );
-    this.add.rectangle(this.worldWidth / 2, this.groundY + 8, this.worldWidth + 200, 18, 0xffffff, 0.55);
+    const floorEdgeKey = this.floorEdgeAssetKey();
+    if (this.textures.exists(floorEdgeKey)) {
+      this.add
+        .tileSprite(this.worldWidth / 2, this.groundY + 9, this.worldWidth + 200, assetsByKey[floorEdgeKey].height, floorEdgeKey)
+        .setDepth(4)
+        .setAlpha(0.98);
+    } else {
+      this.add.rectangle(this.worldWidth / 2, this.groundY + 8, this.worldWidth + 200, 18, 0xffffff, 0.55);
+    }
   }
 
   private createCat(): void {
@@ -392,11 +417,17 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private createLadders(): void {
+    const ladderKey = this.ladderAssetKey();
     for (const ladder of this.level.ladders ?? []) {
       const top = Math.min(ladder.yTop, ladder.yBottom);
       const bottom = Math.max(ladder.yTop, ladder.yBottom);
       const y = (top + bottom) / 2;
       const height = bottom - top + 20;
+
+      if (this.textures.exists(ladderKey)) {
+        this.add.image(ladder.x, y, ladderKey).setDisplaySize(104, height + 18).setDepth(2);
+        continue;
+      }
 
       this.add.rectangle(ladder.x - 25, y, 8, height, 0x8c5b2e, 0.94).setDepth(2);
       this.add.rectangle(ladder.x + 25, y, 8, height, 0x8c5b2e, 0.94).setDepth(2);
@@ -404,24 +435,13 @@ export class PlayScene extends Phaser.Scene {
       for (let rungY = top + 18; rungY <= bottom - 16; rungY += 34) {
         this.add.rectangle(ladder.x, rungY, 66, 7, 0xffd23f, 0.92).setDepth(2);
       }
-
-      this.add
-        .text(ladder.x, top - 24, ladder.label, {
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '16px',
-          color: '#102033',
-          fontStyle: '900',
-          backgroundColor: 'rgba(255,255,255,0.72)',
-          padding: { x: 7, y: 3 }
-        })
-        .setOrigin(0.5)
-        .setDepth(4);
     }
   }
 
   private createPlatforms(): void {
     this.platforms = [];
     const platformKey = this.platformAssetKey();
+    const floorEdgeKey = this.floorEdgeAssetKey();
 
     for (const platform of this.level.platforms) {
       const body = this.add
@@ -433,20 +453,16 @@ export class PlayScene extends Phaser.Scene {
           platformKey
         )
         .setDepth(3);
-      this.add.rectangle(platform.x, platform.y + 3, platform.width, 8, 0xffffff, 0.7).setDepth(4);
-      const label = this.add
-        .text(platform.x, platform.y + 72, platform.label, {
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '17px',
-          color: '#102033',
-          fontStyle: '900',
-          backgroundColor: 'rgba(255,255,255,0.72)',
-          padding: { x: 8, y: 4 }
-        })
-        .setOrigin(0.5)
-        .setDepth(4);
+      const edge = this.textures.exists(floorEdgeKey)
+        ? this.add
+            .tileSprite(platform.x, platform.y + 10, platform.width + 26, assetsByKey[floorEdgeKey].height, floorEdgeKey)
+            .setDepth(5)
+        : undefined;
+      if (!edge) {
+        this.add.rectangle(platform.x, platform.y + 3, platform.width, 8, 0xffffff, 0.7).setDepth(4);
+      }
 
-      this.platforms.push({ definition: platform, body, label });
+      this.platforms.push({ definition: platform, body, edge });
     }
   }
 
@@ -459,21 +475,7 @@ export class PlayScene extends Phaser.Scene {
       const sprite = this.add.image(obstacle.x, y, assetKey);
       sprite.setDepth(4);
       this.setAssetDisplaySize(sprite, assetKey, this.getObstacleScale(obstacle.kind));
-      const cue = this.actionCueForObstacle(obstacle.kind);
-      const cueColor = this.actionCueColor(cue);
-      const labelY = this.obstacleLabelY(y, sprite);
-
-      const label = this.add
-        .text(obstacle.x, labelY, cue, {
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '22px',
-          color: '#ffffff',
-          fontStyle: '900',
-          backgroundColor: Phaser.Display.Color.IntegerToColor(cueColor).rgba,
-          padding: { x: 12, y: 5 }
-        })
-        .setOrigin(0.5)
-        .setDepth(9);
+      const label = this.add.text(obstacle.x, y, '').setVisible(false);
 
       this.obstacles.push({ definition: obstacle, sprite, label, baseY: y, phase: obstacle.x / 180 });
     }
@@ -521,6 +523,32 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
+  private createPowerBadges(): void {
+    this.powerBadges = [];
+    const powers = [this.level.powerup, this.level.bonusPowerup].filter((power): power is PowerupType => Boolean(power));
+    const anchorPlatforms = [this.level.platforms[0], this.level.platforms[2] ?? this.level.platforms[1]];
+
+    powers.forEach((power, index) => {
+      const platform = anchorPlatforms[index] ?? this.level.platforms[this.level.platforms.length - 1];
+      const x = Phaser.Math.Clamp((platform?.x ?? 640) + (index === 0 ? -290 : 280), 120, this.worldWidth - 120);
+      const y = (platform?.y ?? this.groundY) - 112;
+      const ring = this.add.circle(x, y, 48, 0xffd23f, 0.2).setStrokeStyle(5, 0xffd23f, 0.9).setDepth(6);
+      const sprite = this.add.image(x, y, power).setDepth(7);
+      this.setAssetDisplaySize(sprite, power, 0.62);
+
+      this.tweens.add({
+        targets: [ring, sprite],
+        y: '-=7',
+        duration: 760,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+
+      this.powerBadges.push({ power, sprite, ring, collected: false });
+    });
+  }
+
   private createHud(): void {
     this.add
       .rectangle(640, HUD_HEIGHT / 2, 1280, HUD_HEIGHT, 0x102033, 0.82)
@@ -564,7 +592,7 @@ export class PlayScene extends Phaser.Scene {
     this.setAssetDisplaySize(this.powerIcon, this.currentPowerup(), 0.3);
 
     this.powerText = this.add
-      .text(532, 18, this.powerStatusText('ready'), {
+      .text(532, 18, this.powerStatusText('empty'), {
         fontFamily: 'Arial, sans-serif',
         fontSize: '16px',
         color: '#ffec9f',
@@ -595,6 +623,20 @@ export class PlayScene extends Phaser.Scene {
     this.keySlide = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.S);
 
     this.add.rectangle(640, 672, 1280, 96, 0x102033, 0.12).setScrollFactor(0).setDepth(29);
+    this.powerButtonGlow = this.add
+      .circle(1120, CONTROL_Y, 56, 0xffd23f, 0.22)
+      .setScrollFactor(0)
+      .setDepth(29)
+      .setVisible(false);
+    this.tweens.add({
+      targets: this.powerButtonGlow,
+      alpha: { from: 0.14, to: 0.42 },
+      scale: { from: 0.94, to: 1.12 },
+      duration: 520,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
 
     this.createMoveButton(86, CONTROL_Y, 78, 'Back', 0x2f4056, -1);
     this.createMoveButton(196, CONTROL_Y, 88, 'Run', 0x38a16d, 1);
@@ -628,6 +670,9 @@ export class PlayScene extends Phaser.Scene {
     const hitZone = this.add.zone(0, 0, size, size).setInteractive({ useHandCursor: true });
 
     container.add([circle, text, hitZone]);
+    if (label === 'Power') {
+      this.powerButtonCircle = circle;
+    }
     hitZone.on('pointerdown', () => {
       circle.setAlpha(CONTROL_ALPHA_PRESSED);
       circle.setScale(1.06);
@@ -636,10 +681,12 @@ export class PlayScene extends Phaser.Scene {
     hitZone.on('pointerup', () => {
       circle.setAlpha(baseAlpha);
       circle.setScale(1);
+      this.updatePowerAvailabilityVisual();
     });
     hitZone.on('pointerout', () => {
       circle.setAlpha(baseAlpha);
       circle.setScale(1);
+      this.updatePowerAvailabilityVisual();
     });
   }
 
@@ -829,12 +876,12 @@ export class PlayScene extends Phaser.Scene {
     }
 
     this.startRunClock();
-    if (!this.powerReady) {
-      this.showActionFeedback('Power charging', 0xffd23f);
+    if (!this.powerReady || !this.heldPower) {
+      this.showActionFeedback('Find a skill', 0xffd23f);
       return;
     }
 
-    const power = this.currentPowerup();
+    const power = this.heldPower;
     this.lastPowerAt = this.elapsedMs;
     this.resolveNearbyObstaclesForAction('power');
     this.collectNearbyThrustersForAction('power');
@@ -845,6 +892,7 @@ export class PlayScene extends Phaser.Scene {
     this.powerIcon?.setTexture(power);
     this.setPowerIconSize();
     this.powerText?.setText(this.powerStatusText('active', power));
+    this.updatePowerAvailabilityVisual();
     this.showActionFeedback(`${this.powerLabel(power)}!`, 0xffd23f);
 
     switch (power) {
@@ -879,16 +927,55 @@ export class PlayScene extends Phaser.Scene {
       this.activePower = false;
       this.activePowerType = undefined;
       this.invincible = false;
+      this.heldPower = undefined;
       this.powerIcon?.setTexture(this.currentPowerup());
       this.setPowerIconSize();
-      this.powerText?.setText(this.powerStatusText('charging'));
+      this.powerText?.setText(this.powerStatusText('empty'));
+      this.updatePowerAvailabilityVisual();
     });
+  }
 
-    this.time.delayedCall(4300, () => {
-      this.powerReady = true;
-      this.powerIcon?.setTexture(this.currentPowerup());
-      this.setPowerIconSize();
-      this.powerText?.setText(this.powerStatusText('ready'));
+  private checkPowerBadgeOverlaps(): void {
+    if (this.heldPower) {
+      return;
+    }
+
+    for (const badge of this.powerBadges) {
+      if (badge.collected) {
+        continue;
+      }
+
+      const distance = Phaser.Math.Distance.Between(this.cat.x, this.cat.y, badge.sprite.x, badge.sprite.y);
+      if (distance > POWER_BADGE_PICKUP_RADIUS) {
+        continue;
+      }
+
+      this.collectPowerBadge(badge);
+      return;
+    }
+  }
+
+  private collectPowerBadge(badge: PowerBadgeObject): void {
+    badge.collected = true;
+    this.heldPower = badge.power;
+    this.powerReady = true;
+    this.powerIcon?.setTexture(badge.power);
+    this.setPowerIconSize();
+    this.powerText?.setText(this.powerStatusText('ready', badge.power));
+    this.updatePowerAvailabilityVisual();
+    this.showScorePopup(badge.sprite.x, badge.sprite.y - 70, `${this.powerLabel(badge.power)} ready`, 0xffd23f);
+
+    this.tweens.killTweensOf([badge.sprite, badge.ring]);
+    this.tweens.add({
+      targets: [badge.sprite, badge.ring],
+      alpha: 0,
+      scale: 1.35,
+      duration: 260,
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        badge.sprite.destroy();
+        badge.ring.destroy();
+      }
     });
   }
 
@@ -909,7 +996,75 @@ export class PlayScene extends Phaser.Scene {
     }
 
     this.completed = true;
-    this.launchEndBakeOff();
+    this.launchLevelClearSequence();
+  }
+
+  private launchLevelClearSequence(): void {
+    this.touchMoveDirection = 0;
+    this.touchClimbDirection = 0;
+    this.climbing = false;
+    this.sliding = false;
+    this.verticalVelocity = 0;
+    this.onGround = true;
+    this.setCatPose('catVictory');
+    this.flashCat(0xffd23f);
+
+    const finishX = this.level.finish?.x ?? this.cat.x;
+    const finishY = this.level.finish?.y ?? this.currentSurfaceY;
+    const banner = this.add
+      .text(finishX, finishY - 170, 'Level Clear!', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '42px',
+        color: '#102033',
+        fontStyle: '900',
+        backgroundColor: 'rgba(255, 236, 159, 0.94)',
+        padding: { x: 22, y: 10 }
+      })
+      .setOrigin(0.5)
+      .setDepth(30);
+    banner.setStroke('#ffffff', 6);
+
+    const sparkleTargets: Phaser.GameObjects.GameObject[] = [banner];
+    for (let index = 0; index < 12; index += 1) {
+      const sparkle = this.add
+        .star(
+          finishX + Phaser.Math.Between(-150, 150),
+          finishY - Phaser.Math.Between(80, 230),
+          5,
+          5,
+          16,
+          index % 2 === 0 ? 0xffd23f : 0x27b6a5,
+          0.96
+        )
+        .setDepth(29);
+      sparkleTargets.push(sparkle);
+      this.tweens.add({
+        targets: sparkle,
+        y: sparkle.y - Phaser.Math.Between(35, 95),
+        alpha: 0,
+        duration: 980,
+        ease: 'Quad.easeOut',
+        onComplete: () => sparkle.destroy()
+      });
+    }
+
+    this.tweens.add({
+      targets: this.cat,
+      y: this.cat.y - 34,
+      duration: 360,
+      yoyo: true,
+      repeat: 1,
+      ease: 'Sine.easeInOut'
+    });
+
+    this.time.delayedCall(1250, () => {
+      sparkleTargets.forEach((target) => {
+        if ('destroy' in target) {
+          target.destroy();
+        }
+      });
+      this.launchEndBakeOff();
+    });
   }
 
   private launchEndBakeOff(): void {
@@ -1011,7 +1166,8 @@ export class PlayScene extends Phaser.Scene {
 
     const summaries = (this.registry.get('scoreSummaries') ?? []) as ScoreSummary[];
     this.registry.set('scoreSummaries', replaceScoreSummary(summaries, summary));
-    this.scene.resume();
+    this.scene.resume('PlayScene');
+    this.scene.stop('BakingMiniGameScene');
     this.scene.start('ResultsScene', { levelIndex: this.level.index, summary });
   }
 
@@ -1319,33 +1475,6 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
-  private actionCueForObstacle(kind: ObstacleDefinition['kind']): string {
-    switch (kind) {
-      case 'lowBarrier':
-        return 'Crawl';
-      case 'swing':
-        return 'Duck';
-      case 'cakeWall':
-        return 'Power';
-      case 'hurdle':
-      case 'frostingPit':
-        return 'Jump';
-    }
-  }
-
-  private actionCueColor(cue: string): number {
-    switch (cue) {
-      case 'Crawl':
-      case 'Duck':
-        return 0xf05f73;
-      case 'Power':
-        return 0xffd23f;
-      case 'Jump':
-      default:
-        return 0x27b6a5;
-    }
-  }
-
   private obstacleLabelY(y: number, sprite: Phaser.GameObjects.Image): number {
     const preferredY = y - sprite.displayHeight / 2 - 38;
     if (preferredY < 114) {
@@ -1361,6 +1490,13 @@ export class PlayScene extends Phaser.Scene {
 
   private touchControlAlpha(): number {
     return this.sys.game.device.input.touch ? CONTROL_ALPHA_TOUCH : CONTROL_ALPHA_DESKTOP;
+  }
+
+  private updatePowerAvailabilityVisual(): void {
+    const hasReadyPower = this.powerReady && Boolean(this.heldPower);
+    this.powerButtonGlow?.setVisible(hasReadyPower);
+    this.powerButtonCircle?.setAlpha(hasReadyPower ? 0.9 : this.touchControlAlpha());
+    this.powerIcon?.setAlpha(hasReadyPower || Boolean(this.heldPower) ? 1 : 0.42);
   }
 
   private showActionFeedback(message: string, color: number): void {
@@ -1713,21 +1849,19 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
-  private powerStatusText(state: 'ready' | 'active' | 'charging', power = this.currentPowerup()): string {
+  private powerStatusText(state: 'ready' | 'active' | 'empty', power = this.currentPowerup()): string {
     switch (state) {
       case 'active':
         return `${this.powerLabel(power)} active`;
-      case 'charging':
-        return `${this.powerLabel(power)} charging`;
       case 'ready':
         return `${this.powerLabel(power)} ready | Space`;
+      case 'empty':
+        return 'Find a skill badge';
     }
   }
 
   private currentPowerup(): PowerupType {
-    const powerups = this.level.bonusPowerup ? [this.level.powerup, this.level.bonusPowerup] : [this.level.powerup];
-
-    return powerups[this.powerUseCount % powerups.length];
+    return this.heldPower ?? this.level.powerup;
   }
 
   private flashCat(color: number): void {
@@ -1808,6 +1942,8 @@ export class PlayScene extends Phaser.Scene {
       'queen',
       'star',
       this.platformAssetKey(),
+      this.floorEdgeAssetKey(),
+      this.ladderAssetKey(),
       'treat-cupcake-base',
       'treat-donut-base',
       'treat-star-topper'
@@ -1829,6 +1965,28 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
+  private floorEdgeAssetKey(): AssetKey {
+    switch (this.levelThemeKey()) {
+      case 'bakery':
+        return 'floor-edge-bakery';
+      case 'tower':
+        return 'floor-edge-tower';
+      case 'yarn':
+        return 'floor-edge-yarn';
+    }
+  }
+
+  private ladderAssetKey(): AssetKey {
+    switch (this.levelThemeKey()) {
+      case 'bakery':
+        return 'ladder-bakery';
+      case 'tower':
+        return 'ladder-tower';
+      case 'yarn':
+        return 'ladder-yarn';
+    }
+  }
+
   private obstacleAssetKey(kind: ObstacleDefinition['kind']): AssetKey {
     const theme = this.levelThemeKey();
 
@@ -1836,9 +1994,9 @@ export class PlayScene extends Phaser.Scene {
       case 'hurdle':
         return theme === 'bakery' ? 'hurdle-bakery' : theme === 'tower' ? 'hurdle-tower' : 'hurdle-yarn';
       case 'lowBarrier':
-        return theme === 'bakery' ? 'lowBarrier-bakery' : theme === 'tower' ? 'lowBarrier-tower' : 'lowBarrier-yarn';
+        return theme === 'bakery' ? 'crawlGate-bakery' : theme === 'tower' ? 'crawlGate-tower' : 'crawlGate-yarn';
       case 'swing':
-        return theme === 'bakery' ? 'swing-bakery' : theme === 'tower' ? 'swing-tower' : 'swing-yarn';
+        return theme === 'bakery' ? 'roller-bakery' : theme === 'tower' ? 'roller-tower' : 'roller-yarn';
       case 'frostingPit':
         return 'frostingPit';
       case 'cakeWall':

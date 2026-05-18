@@ -98,6 +98,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
   private serveMarkerX = SERVE_METER_LEFT;
   private serveMarkerDirection: -1 | 1 = 1;
   private feedbackText?: Phaser.GameObjects.Text;
+  private promptBack?: Phaser.GameObjects.Rectangle;
   private promptText?: Phaser.GameObjects.Text;
   private statusText?: Phaser.GameObjects.Text;
   private ticketTitleText?: Phaser.GameObjects.Text;
@@ -165,7 +166,8 @@ export class BakingMiniGameScene extends Phaser.Scene {
         color: '#ffffff',
         fontStyle: '900'
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(5);
 
     const updateProgress = (value: number) => {
       progressFill.width = 418 * value;
@@ -277,7 +279,8 @@ export class BakingMiniGameScene extends Phaser.Scene {
         align: 'center',
         wordWrap: { width: 760 }
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(22);
 
     this.statusText = this.add
       .text(640, 558, '', {
@@ -288,7 +291,8 @@ export class BakingMiniGameScene extends Phaser.Scene {
         align: 'center',
         wordWrap: { width: 760 }
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(22);
   }
 
   private createTicketPanel(): void {
@@ -309,7 +313,8 @@ export class BakingMiniGameScene extends Phaser.Scene {
         fontStyle: '900',
         align: 'center'
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(5);
     this.ticketProgressText = this.add
       .text(300, 166, '', {
         fontFamily: 'Arial, sans-serif',
@@ -318,7 +323,8 @@ export class BakingMiniGameScene extends Phaser.Scene {
         fontStyle: '900',
         align: 'center'
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(5);
     this.ticketRecipeText = this.add
       .text(300, 312, '', {
         fontFamily: 'Arial, sans-serif',
@@ -328,7 +334,8 @@ export class BakingMiniGameScene extends Phaser.Scene {
         align: 'center',
         wordWrap: { width: 304 }
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(5);
   }
 
   private createBakeStage(): void {
@@ -360,16 +367,18 @@ export class BakingMiniGameScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
+    this.promptBack = this.add.rectangle(640, 464, 720, 62, 0xfffcf1, 0.94).setStrokeStyle(3, 0xffd23f, 0.78).setDepth(20);
     this.promptText = this.add
-      .text(640, 462, '', {
+      .text(640, 464, '', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '21px',
+        fontSize: '22px',
         color: '#102033',
         fontStyle: '900',
         align: 'center',
         wordWrap: { width: 650 }
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(21);
 
     this.serveMeterTrack = this.addBakeoffImage('serve-meter-track', 640, 494, 5) ??
       this.add.rectangle(640, 494, 240, 18, 0x102033, 0.24).setStrokeStyle(3, 0x102033, 0.45);
@@ -407,7 +416,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
 
     this.addBakeoffImage('bakeoff-timer-badge', 988, 217, 3)?.setDisplaySize(222, 60);
     this.add.rectangle(988, 217, 204, 22, 0xffffff, 0.18).setStrokeStyle(2, 0xffffff, 0.6);
-    this.timerFill = this.add.rectangle(888, 217, 200, 18, 0x27b6a5, 1).setOrigin(0, 0.5);
+    this.timerFill = this.add.rectangle(888, 217, 200, 18, 0x27b6a5, 1).setOrigin(0, 0.5).setDepth(5);
     this.timerText = this.add
       .text(988, 250, '', {
         fontFamily: 'Arial, sans-serif',
@@ -415,7 +424,8 @@ export class BakingMiniGameScene extends Phaser.Scene {
         color: '#ffec9f',
         fontStyle: '900'
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(5);
 
     this.addBakeoffImage('multiplier-badge-base', 988, 320, 3)?.setDisplaySize(176, 112);
     this.multiplierText = this.add
@@ -428,7 +438,8 @@ export class BakingMiniGameScene extends Phaser.Scene {
         lineSpacing: 2,
         wordWrap: { width: 150 }
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(5);
     this.updateTimer();
   }
 
@@ -671,7 +682,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
     const x = 640 + (stepIndex - 1.5) * 28;
     const y = 384 - Math.min(stepIndex, 5) * 9;
     const treatKey = this.treatAssetKey(step);
-    const treat = this.addTreatPieceImage(treatKey);
+    const treat = this.addTreatPieceImage(treatKey, step, stepIndex);
     if (treat) {
       this.trayPieces.push(treat);
       this.popIn(treat);
@@ -751,6 +762,8 @@ export class BakingMiniGameScene extends Phaser.Scene {
     this.ticketTitleText?.setText('Multiplier Math');
     this.ticketProgressText?.setText('Final judge question');
     this.ticketRecipeText?.setText(`${this.order.treatCount} treats x ${this.order.perTreat} topping moves each`);
+    this.promptBack?.setPosition(640, 474).setDisplaySize(760, 84).setDepth(23);
+    this.promptText?.setPosition(640, 474).setDepth(24);
     this.promptText?.setText(this.order.mathPrompt);
     this.feedbackText?.setText('Answer the batch math to lock in the score multiplier.');
     this.updateStatusText();
@@ -872,12 +885,13 @@ export class BakingMiniGameScene extends Phaser.Scene {
     const bonus = Math.max(0, Math.round(this.actionScore * (result.multiplier - 1)));
     const badgeColor = result.perfect ? '#38a16d' : result.multiplier >= 1.5 ? '#ff9ec7' : '#f05f73';
     const badgeKey = this.multiplierBadgeKey(result.multiplier);
-    const badge = this.addBakeoffImage(badgeKey, 984, 352, 12);
-    badge?.setDisplaySize(210, 140);
+    const badge = this.addBakeoffImage(badgeKey, 988, 320, 12);
+    badge?.setDisplaySize(176, 112);
     this.playBakeoffSound('sfx-multiplier-reveal');
 
     this.multiplierText?.setText(`Multiplier x${result.multiplier.toFixed(1)}\nBonus +${bonus.toLocaleString('en-US')}`);
     this.multiplierText?.setColor(badgeColor);
+    this.multiplierText?.setDepth(13);
     this.updateStatusText(result);
     this.launchFinishAnimation(result);
 
@@ -953,7 +967,8 @@ export class BakingMiniGameScene extends Phaser.Scene {
       const isCurrent = index === this.currentStepIndex;
       const slot = this.add
         .rectangle(x, 281, 56, 56, isCurrent ? 0xffec9f : 0xfff4c7, 1)
-        .setStrokeStyle(isCurrent ? 5 : 3, isCurrent ? 0xffd23f : 0x102033);
+        .setStrokeStyle(isCurrent ? 5 : 3, isCurrent ? 0xffd23f : 0x102033)
+        .setDepth(6);
       const text = this.add
         .text(x, 281, `${index + 1}\n${this.stepShortLabel(step)}`, {
           fontFamily: 'Arial, sans-serif',
@@ -964,7 +979,8 @@ export class BakingMiniGameScene extends Phaser.Scene {
           lineSpacing: 0,
           wordWrap: { width: 52 }
         })
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setDepth(7);
       this.ticketSlots.push(slot);
       this.ticketTexts.push(text);
     });
@@ -1194,17 +1210,40 @@ export class BakingMiniGameScene extends Phaser.Scene {
     }
   }
 
-  private addTreatPieceImage(key: BakeoffAssetKey): Phaser.GameObjects.Image | undefined {
-    const guide = trayAnchorGuide.pieces[key];
-    const image = this.addBakeoffImage(key, 640 + (guide?.stackOffset.x ?? 0), 414 + (guide?.stackOffset.y ?? 0), 8);
+  private addTreatPieceImage(
+    key: BakeoffAssetKey,
+    step: BakeRushStep,
+    stepIndex: number
+  ): Phaser.GameObjects.Image | undefined {
+    const layout = this.trayPieceLayout(step, stepIndex);
+    const image = this.addBakeoffImage(key, layout.x, layout.y, layout.depth);
     if (!image) {
       return undefined;
     }
 
-    const asset = assetsByKey[key];
-    image.setOrigin(guide?.anchor.x ?? 0.5, guide?.anchor.y ?? 0.5);
-    image.setDisplaySize(asset.width * 0.58, asset.height * 0.58);
+    image.setOrigin(0.5);
+    image.setDisplaySize(layout.width, layout.height);
     return image;
+  }
+
+  private trayPieceLayout(
+    step: BakeRushStep,
+    stepIndex: number
+  ): { x: number; y: number; width: number; height: number; depth: number } {
+    switch (step) {
+      case 'base':
+        return { x: 640, y: 405, width: 136, height: 98, depth: 8 };
+      case 'frosting':
+        return { x: 640, y: 356, width: 118, height: 88, depth: 9 };
+      case 'sprinkles':
+        return { x: 640, y: 326, width: 92, height: 58, depth: 11 };
+      case 'berry':
+        return { x: 672 - Math.min(stepIndex, 2) * 10, y: 332, width: 72, height: 58, depth: 12 };
+      case 'candle':
+        return { x: 655, y: 288, width: 44, height: 78, depth: 13 };
+      case 'serve':
+        return { x: 640, y: 407, width: 86, height: 62, depth: 7 };
+    }
   }
 
   private treatAssetKey(step: BakeRushStep): BakeoffAssetKey {

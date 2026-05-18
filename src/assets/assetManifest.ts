@@ -88,14 +88,18 @@ const imageUrls = import.meta.glob(
     './images/bakeoff*.png',
     './images/completed-treat-rack*.png',
     './images/correction-poof*.png',
+    './images/crawlGate*.png',
+    './images/floor-edge*.png',
     './images/frosting-apply*.png',
     './images/judge*.png',
+    './images/ladder*.png',
     './images/math-*.png',
     './images/mixing-bowl*.png',
     './images/multiplier-badge*.png',
     './images/perfect-bake-badge*.png',
     './images/perfect-sparkle*.png',
     './images/recipe-ticket*.png',
+    './images/roller*.png',
     './images/serve*.png',
     './images/sprinkle-burst*.png',
     './images/station*.png',
@@ -283,6 +287,23 @@ export const titleAssetKeys = [
 
 export type TitleAssetKey = (typeof titleAssetKeys)[number];
 
+export const courseDetailAssetKeys = [
+  'ladder-yarn',
+  'ladder-bakery',
+  'ladder-tower',
+  'floor-edge-yarn',
+  'floor-edge-bakery',
+  'floor-edge-tower',
+  'crawlGate-yarn',
+  'crawlGate-bakery',
+  'crawlGate-tower',
+  'roller-yarn',
+  'roller-bakery',
+  'roller-tower'
+] as const;
+
+export type CourseDetailAssetKey = (typeof courseDetailAssetKeys)[number];
+
 export type AssetKey =
   | 'cat'
   | 'catRun1'
@@ -328,6 +349,7 @@ export type AssetKey =
   | 'platform-yarn'
   | 'platform-bakery'
   | 'platform-tower'
+  | CourseDetailAssetKey
   | TitleAssetKey
   | BakeoffAssetKey;
 
@@ -528,6 +550,31 @@ const titleAssetManifest: AssetManifestEntry[] = titleAssetKeys.map((key) => {
     width: size.width,
     height: size.height,
     kind: 'Title',
+    url: imageAssetUrl(key),
+    highDpiUrl: imageAssetUrl(`${key}-2x`)
+  };
+});
+
+const courseDetailAssetSize = (key: CourseDetailAssetKey): { width: number; height: number } => {
+  if (key.startsWith('ladder')) {
+    return { width: 96, height: 320 };
+  }
+
+  if (key.startsWith('floor-edge')) {
+    return { width: 512, height: 64 };
+  }
+
+  return { width: 160, height: 160 };
+};
+
+const courseDetailAssetManifest: AssetManifestEntry[] = courseDetailAssetKeys.map((key) => {
+  const size = courseDetailAssetSize(key);
+  return {
+    key,
+    description: `Course detail asset: ${key}`,
+    width: size.width,
+    height: size.height,
+    kind: key.startsWith('ladder') || key.startsWith('floor-edge') ? 'Platform' : 'Obstacle',
     url: imageAssetUrl(key),
     highDpiUrl: imageAssetUrl(`${key}-2x`)
   };
@@ -930,6 +977,7 @@ export const assetManifest: AssetManifestEntry[] = [
     url: platformTowerUrl,
     highDpiUrl: platformTowerHighDpiUrl
   },
+  ...courseDetailAssetManifest,
   ...titleAssetManifest,
   ...bakeoffAssetManifest
 ];
