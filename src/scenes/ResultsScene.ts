@@ -25,22 +25,23 @@ export class ResultsScene extends Phaser.Scene {
   create(): void {
     this.cameras.main.setBackgroundColor(0x173f48);
     this.add.rectangle(640, 360, 1280, 720, 0x173f48);
-    this.add.rectangle(640, 360, 900, 560, 0xffffff, 1).setStrokeStyle(8, 0xffd23f);
+    this.add.rectangle(640, 360, 980, 620, 0xffffff, 1).setStrokeStyle(8, 0xffd23f);
 
     this.add
-      .text(640, 116, `${this.summary.levelTitle} Complete`, {
+      .text(640, 84, `${this.summary.levelTitle} Complete`, {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '42px',
+        fontSize: '36px',
         color: '#102033',
         fontStyle: '900',
-        align: 'center'
+        align: 'center',
+        wordWrap: { width: 900 }
       })
       .setOrigin(0.5);
 
     this.add
-      .text(640, 178, `Score: ${formatScore(this.summary.score)}`, {
+      .text(640, 138, `Score: ${formatScore(this.summary.score)}`, {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '50px',
+        fontSize: '46px',
         color: '#102033',
         fontStyle: '900',
         align: 'center'
@@ -54,9 +55,9 @@ export class ResultsScene extends Phaser.Scene {
 
   private addStars(): void {
     for (let index = 0; index < 3; index += 1) {
-      const star = this.add.image(540 + index * 100, 248, 'star');
+      const star = this.add.image(540 + index * 100, 202, 'star');
       star.setAlpha(index < this.summary.stars ? 1 : 0.22);
-      star.setDisplaySize(assetsByKey.star.width * 0.9, assetsByKey.star.height * 0.9);
+      star.setDisplaySize(assetsByKey.star.width * 0.78, assetsByKey.star.height * 0.78);
     }
   }
 
@@ -92,37 +93,37 @@ export class ResultsScene extends Phaser.Scene {
     ];
 
     this.add
-      .text(250, 316, earnedLines.join('\n'), {
+      .text(190, 266, earnedLines.join('\n'), {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '19px',
+        fontSize: '18px',
         color: '#2f4056',
         fontStyle: '800',
         align: 'left',
-        lineSpacing: 8,
-        wordWrap: { width: 385 }
+        lineSpacing: 6,
+        wordWrap: { width: 440 }
       })
       .setOrigin(0, 0);
 
     this.add
-      .text(690, 316, bonusLines.join('\n'), {
+      .text(700, 266, bonusLines.join('\n'), {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '19px',
+        fontSize: '18px',
         color: '#2f4056',
         fontStyle: '800',
         align: 'left',
-        lineSpacing: 8,
-        wordWrap: { width: 350 }
+        lineSpacing: 6,
+        wordWrap: { width: 360 }
       })
       .setOrigin(0, 0);
   }
 
   private addButtons(): void {
     const isFinalLevel = this.levelIndex >= levels.length - 1;
-    this.createButton(480, 576, 'Replay Level', 0x27b6a5, () => {
+    this.createButton(480, 646, 'Replay Level', 0x27b6a5, () => {
       this.scene.start('PlayScene', { levelIndex: this.levelIndex });
     });
 
-    this.createButton(800, 576, isFinalLevel ? 'Birthday Finale' : 'Next Level', 0xffd23f, () => {
+    this.createButton(800, 646, isFinalLevel ? 'Birthday Finale' : 'Next Level', 0xffd23f, () => {
       if (isFinalLevel) {
         this.scene.start('FinaleScene');
         return;
@@ -134,14 +135,14 @@ export class ResultsScene extends Phaser.Scene {
 
   private createButton(x: number, y: number, label: string, color: number, onPress: () => void): void {
     const background = this.add
-      .rectangle(x, y, 260, 78, color)
+      .rectangle(x, y, 260, 66, color)
       .setStrokeStyle(5, 0x102033)
       .setInteractive({ useHandCursor: true });
     const textColor = color === 0xffd23f ? '#102033' : '#ffffff';
     this.add
       .text(x, y, label, {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '25px',
+        fontSize: '23px',
         color: textColor,
         fontStyle: '900'
       })

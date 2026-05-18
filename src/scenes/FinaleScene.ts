@@ -39,9 +39,9 @@ export class FinaleScene extends Phaser.Scene {
     }
 
     this.add
-      .text(640, 94, `Happy ${gameProfile.birthdayAge}th Birthday, ${gameProfile.playerName}!`, {
+      .text(640, 64, `Happy ${gameProfile.birthdayAge}th Birthday, ${gameProfile.playerName}!`, {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '50px',
+        fontSize: '44px',
         color: '#ffffff',
         fontStyle: '900',
         align: 'center',
@@ -49,16 +49,19 @@ export class FinaleScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
+    this.add.rectangle(346, 370, 390, 420, 0xffffff, 0.1).setStrokeStyle(5, 0xffd23f, 0.8);
     this.add
-      .image(640, 262, 'catVictory')
-      .setDisplaySize(assetsByKey.catVictory.width * 1.55, assetsByKey.catVictory.height * 1.55);
+      .image(346, 330, 'catVictory')
+      .setDisplaySize(assetsByKey.catVictory.width * 1.48, assetsByKey.catVictory.height * 1.48);
 
     this.add
-      .text(640, 402, 'Cat Beast Champion', {
+      .text(346, 548, 'Cat Beast Champion', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '46px',
+        fontSize: '38px',
         color: '#ffec9f',
-        fontStyle: '900'
+        fontStyle: '900',
+        align: 'center',
+        wordWrap: { width: 340 }
       })
       .setOrigin(0.5);
 
@@ -72,18 +75,30 @@ export class FinaleScene extends Phaser.Scene {
       `Total course time: ${formatTime(totalTime)}`
     ];
 
+    this.add.rectangle(820, 376, 500, 420, 0xffffff, 0.12).setStrokeStyle(5, 0xffffff, 0.76);
     this.add
-      .text(640, 510, lines.join('\n'), {
+      .text(820, 194, 'Final Scorecard', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '30px',
-        color: '#ffffff',
-        fontStyle: '800',
-        align: 'center',
-        lineSpacing: 12
+        fontSize: '34px',
+        color: '#ffec9f',
+        fontStyle: '900',
+        align: 'center'
       })
       .setOrigin(0.5);
 
-    this.createButton(640, 640, 'Run the Course Again', () => {
+    this.add
+      .text(610, 246, lines.join('\n'), {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '26px',
+        color: '#ffffff',
+        fontStyle: '800',
+        align: 'left',
+        lineSpacing: 10,
+        wordWrap: { width: 420 }
+      })
+      .setOrigin(0, 0);
+
+    this.createButton(820, 636, 'Run the Course Again', () => {
       this.registry.set('scoreSummaries', []);
       this.scene.start('PlayScene', { levelIndex: 0 });
     });
@@ -91,14 +106,14 @@ export class FinaleScene extends Phaser.Scene {
 
   private createButton(x: number, y: number, label: string, onPress: () => void): void {
     const background = this.add
-      .rectangle(x, y, 360, 78, 0xffd23f)
+      .rectangle(x, y, 360, 68, 0xffd23f)
       .setStrokeStyle(5, 0xffffff)
       .setInteractive({ useHandCursor: true });
 
     this.add
       .text(x, y, label, {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '27px',
+        fontSize: '25px',
         color: '#102033',
         fontStyle: '900'
       })

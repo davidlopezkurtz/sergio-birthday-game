@@ -57,6 +57,11 @@ const DEFAULT_WORLD_HEIGHT = 720;
 const CAT_BASE_SPEED = 230;
 const CAT_BACK_SPEED = 170;
 const CLIMB_SPEED = 260;
+const CAT_STAND_FOOT_OFFSET = 65;
+const CAT_JUMP_VELOCITY = -920;
+const CAT_POWER_JUMP_VELOCITY = -850;
+const CAT_BISHOP_JUMP_VELOCITY = -650;
+const GRAVITY = 1650;
 const COUNTDOWN_MS = 1400;
 const JUMP_ACTION_GRACE_MS = 1150;
 const SLIDE_ACTION_GRACE_MS = 950;
@@ -144,7 +149,6 @@ export class PlayScene extends Phaser.Scene {
   private progressText?: Phaser.GameObjects.Text;
   private powerText?: Phaser.GameObjects.Text;
   private powerIcon?: Phaser.GameObjects.Image;
-  private instructionText?: Phaser.GameObjects.Text;
   private platforms: PlatformObject[] = [];
   private obstacles: ObstacleObject[] = [];
   private thrusters: ThrusterObject[] = [];
@@ -348,14 +352,6 @@ export class PlayScene extends Phaser.Scene {
       }
     }
 
-    this.add
-      .text(90, Math.max(120, this.groundY - 480), this.level.title, {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '34px',
-        color: '#102033',
-        fontStyle: '900'
-      })
-      .setDepth(2);
   }
 
   private createGround(): void {
@@ -371,7 +367,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private createCat(): void {
-    this.cat = this.add.sprite(this.startX, this.groundY - 90, 'cat');
+    this.cat = this.add.sprite(this.startX, this.groundY - CAT_STAND_FOOT_OFFSET, 'cat');
     this.setAssetDisplaySize(this.cat, 'cat');
     this.cat.setDepth(5);
   }
@@ -410,10 +406,17 @@ export class PlayScene extends Phaser.Scene {
 
     for (const platform of this.level.platforms) {
       const body = this.add
-        .tileSprite(platform.x, platform.y + 26, platform.width, assetsByKey[platformKey].height, platformKey)
+        .tileSprite(
+          platform.x,
+          platform.y + assetsByKey[platformKey].height / 2,
+          platform.width,
+          assetsByKey[platformKey].height,
+          platformKey
+        )
         .setDepth(3);
+      this.add.rectangle(platform.x, platform.y + 3, platform.width, 8, 0xffffff, 0.7).setDepth(4);
       const label = this.add
-        .text(platform.x, platform.y + 68, platform.label, {
+        .text(platform.x, platform.y + 72, platform.label, {
           fontFamily: 'Arial, sans-serif',
           fontSize: '17px',
           color: '#102033',
@@ -461,33 +464,34 @@ export class PlayScene extends Phaser.Scene {
       const color = this.thrusterColor(thruster);
       const radius = this.thrusterRadius(thruster);
       const ring = this.add
-        .circle(thruster.x, thruster.y, radius, color, 0.22)
-        .setStrokeStyle(6, color, 1)
+        .circle(thruster.x, thruster.y + radius * 0.58, radius * 0.72, 0x102033, 0.16)
         .setDepth(6);
       const core = this.add
-        .circle(thruster.x, thruster.y + 4, radius * 0.68, 0xfff4c7, 0.96)
+        .circle(thruster.x, thruster.y, radius * 0.62, 0xfff4c7, 0.98)
         .setStrokeStyle(4, 0x8c5b2e, 0.84)
         .setDepth(7);
       const sprinkles = [
-        this.add.circle(thruster.x - radius * 0.2, thruster.y - radius * 0.08, radius * 0.12, color, 1).setDepth(8),
-        this.add.circle(thruster.x + radius * 0.16, thruster.y - radius * 0.14, radius * 0.1, 0xf05f73, 1).setDepth(8),
-        this.add.circle(thruster.x + radius * 0.02, thruster.y + radius * 0.1, radius * 0.09, 0x27b6a5, 1).setDepth(8)
+        this.add.circle(thruster.x - radius * 0.3, thruster.y - radius * 0.02, radius * 0.18, color, 1).setDepth(8),
+        this.add.circle(thruster.x + radius * 0.25, thruster.y - radius * 0.16, radius * 0.13, 0xf05f73, 1).setDepth(8),
+        this.add.circle(thruster.x + radius * 0.08, thruster.y + radius * 0.18, radius * 0.12, 0x27b6a5, 1).setDepth(8),
+        this.add.circle(thruster.x - radius * 0.04, thruster.y, radius * 0.22, 0xffffff, 0.92).setDepth(8)
       ];
       const valueText = this.add
-        .text(thruster.x, thruster.y + 2, `+${thruster.value}`, {
+        .text(thruster.x, thruster.y + radius + 24, `+${thruster.value}`, {
           fontFamily: 'Arial, sans-serif',
-          fontSize: thruster.value >= 500 ? '23px' : '21px',
-          color: '#102033',
-          fontStyle: '900'
+          fontSize: thruster.value >= 500 ? '20px' : '18px',
+          color: '#ffffff',
+          fontStyle: '900',
+          backgroundColor: 'rgba(16,32,51,0.82)',
+          padding: { x: 7, y: 3 }
         })
         .setOrigin(0.5)
         .setDepth(8);
 
       this.tweens.add({
-        targets: ring,
-        scale: 1.14,
-        alpha: 0.44,
-        duration: 640,
+        targets: [core, ...sprinkles],
+        y: '-=5',
+        duration: 720,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut'
@@ -559,22 +563,6 @@ export class PlayScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(21);
 
-    this.instructionText = this.add
-      .text(640, 96, 'Climb, jump, crawl, collect pastries. Bake at the top for a multiplier.', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '21px',
-        color: '#102033',
-        fontStyle: '800',
-        align: 'center',
-        wordWrap: { width: 1040 },
-        backgroundColor: 'rgba(255,255,255,0.75)',
-        padding: { x: 14, y: 8 }
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(21);
-
-    this.time.delayedCall(5200, () => this.instructionText?.setVisible(false));
   }
 
   private createControls(): void {
@@ -754,7 +742,7 @@ export class PlayScene extends Phaser.Scene {
 
     if (this.onGround) {
       const jumpSurfaceY = this.catSurfaceY();
-      this.verticalVelocity = -920;
+      this.verticalVelocity = CAT_JUMP_VELOCITY;
       this.onGround = false;
       this.currentSurfaceY = jumpSurfaceY;
       this.setCatPose('catJump');
@@ -776,7 +764,7 @@ export class PlayScene extends Phaser.Scene {
     this.lastSlideAt = this.elapsedMs;
     this.resolveNearbyObstaclesForAction('slide');
     this.collectNearbyThrustersForAction('slide');
-    this.showActionFeedback('Slide!', 0xf05f73);
+    this.showActionFeedback('Crawl!', 0xf05f73);
 
     if (this.sliding) {
       this.cat.x = Phaser.Math.Clamp(this.cat.x + 12, this.startX, this.worldWidth - 40);
@@ -823,14 +811,14 @@ export class PlayScene extends Phaser.Scene {
         break;
       case 'knight':
         this.currentSurfaceY = this.catSurfaceY();
-        this.verticalVelocity = -850;
+        this.verticalVelocity = CAT_POWER_JUMP_VELOCITY;
         this.onGround = false;
         this.climbing = false;
         this.flashCat(0x27b6a5);
         break;
       case 'bishop':
         this.currentSurfaceY = this.catSurfaceY();
-        this.verticalVelocity = -650;
+        this.verticalVelocity = CAT_BISHOP_JUMP_VELOCITY;
         this.onGround = false;
         this.climbing = false;
         this.cat.x = Phaser.Math.Clamp(this.cat.x + 90, this.startX, this.worldWidth - 40);
@@ -1145,7 +1133,7 @@ export class PlayScene extends Phaser.Scene {
 
   private awardObstacleClear(obstacle: ObstacleDefinition, label = 'Clear!'): void {
     this.obstacleClears += 1;
-    this.awardSkillPoints(OBSTACLE_CLEAR_POINTS, 'obstacle', obstacle.x, this.cat.y - 90, label);
+    this.awardSkillPoints(OBSTACLE_CLEAR_POINTS, 'obstacle', obstacle.x, this.cat.y - 80, label);
   }
 
   private awardSkillPoints(
@@ -1209,7 +1197,7 @@ export class PlayScene extends Phaser.Scene {
       case undefined:
         return true;
       case 'jump':
-        return this.actionIsFresh(this.lastJumpAt, JUMP_ACTION_GRACE_MS) || this.cat.y < this.currentSurfaceY - 78;
+        return this.actionIsFresh(this.lastJumpAt, JUMP_ACTION_GRACE_MS) || this.catSurfaceY() < this.currentSurfaceY - 45;
       case 'slide':
         return this.sliding || this.actionIsFresh(this.lastSlideAt, SLIDE_ACTION_GRACE_MS);
       case 'power':
@@ -1244,7 +1232,7 @@ export class PlayScene extends Phaser.Scene {
       'Pastry!'
     );
 
-    this.tweens.killTweensOf(thruster.ring);
+    this.tweens.killTweensOf([thruster.ring, thruster.core, ...thruster.sprinkles, thruster.valueText]);
     this.tweens.add({
       targets: [thruster.ring, thruster.core, ...thruster.sprinkles, thruster.valueText],
       alpha: 0,
@@ -1291,8 +1279,9 @@ export class PlayScene extends Phaser.Scene {
   private actionCueForObstacle(kind: ObstacleDefinition['kind']): string {
     switch (kind) {
       case 'lowBarrier':
+        return 'Crawl';
       case 'swing':
-        return 'Slide';
+        return 'Duck';
       case 'cakeWall':
         return 'Power';
       case 'hurdle':
@@ -1350,8 +1339,9 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
 
-    const topCatY = ladder.yTop - 90;
-    const bottomCatY = ladder.yBottom - 90;
+    const footOffset = this.catFootOffset();
+    const topCatY = ladder.yTop - footOffset;
+    const bottomCatY = ladder.yBottom - footOffset;
     this.cat.x = Phaser.Math.Linear(this.cat.x, ladder.x, 0.28);
     this.cat.y = Phaser.Math.Clamp(this.cat.y + (direction * CLIMB_SPEED * delta) / 1000, topCatY, bottomCatY);
     this.verticalVelocity = 0;
@@ -1407,7 +1397,11 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private catSurfaceY(): number {
-    return this.cat.y + 90;
+    return this.cat.y + this.catFootOffset();
+  }
+
+  private catFootOffset(): number {
+    return Math.max(42, this.cat.displayHeight / 2 - 1);
   }
 
   private applyManualGravity(delta: number): void {
@@ -1423,14 +1417,14 @@ export class PlayScene extends Phaser.Scene {
     const previousY = this.cat.y;
 
     if (!this.onGround) {
-      this.verticalVelocity += (1650 * delta) / 1000;
+      this.verticalVelocity += (GRAVITY * delta) / 1000;
       this.cat.y += (this.verticalVelocity * delta) / 1000;
     }
 
     const landingSurfaceY = this.getLandingSurfaceY(previousY);
     if (landingSurfaceY !== undefined) {
       this.currentSurfaceY = landingSurfaceY;
-      this.cat.y = landingSurfaceY - 90;
+      this.cat.y = landingSurfaceY - this.catFootOffset();
       this.verticalVelocity = 0;
       this.onGround = true;
       if (!this.sliding) {
@@ -1510,7 +1504,7 @@ export class PlayScene extends Phaser.Scene {
     ];
 
     const crossedSurfaces = candidates
-      .map((surfaceY) => ({ surfaceY, catY: surfaceY - 90 }))
+      .map((surfaceY) => ({ surfaceY, catY: surfaceY - this.catFootOffset() }))
       .filter(({ catY }) => previousY <= catY && this.cat.y >= catY)
       .sort((a, b) => a.catY - b.catY);
 
@@ -1772,9 +1766,14 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
 
+    const surfaceY = this.cat ? this.catSurfaceY() : undefined;
     this.currentCatPose = assetKey;
     this.cat.setTexture(assetKey);
     this.setAssetDisplaySize(this.cat, assetKey);
+
+    if (surfaceY !== undefined && (this.onGround || this.sliding || this.climbing)) {
+      this.cat.y = surfaceY - this.catFootOffset();
+    }
   }
 
   private restoreMovementCatPose(): void {

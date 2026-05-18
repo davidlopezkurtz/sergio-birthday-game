@@ -9,21 +9,36 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
-    const progressBar = this.add.rectangle(640, 404, 520, 18, 0xffffff, 0.24).setStrokeStyle(3, 0xffffff, 0.7);
-    const progressFill = this.add.rectangle(382, 404, 0, 18, 0xffd23f, 1).setOrigin(0, 0.5);
+    this.cameras.main.setBackgroundColor(0x96e7ff);
+    this.add.rectangle(640, 360, 1280, 720, 0x96e7ff);
+    this.add.rectangle(640, 492, 1280, 180, 0x38a16d, 0.42);
+    this.add.rectangle(640, 518, 940, 22, 0xffffff, 0.6);
+    this.add.rectangle(640, 454, 620, 54, 0xffd23f, 0.9).setStrokeStyle(5, 0x102033);
+    this.add.rectangle(486, 320, 86, 210, 0x8c5b2e, 0.92);
+    this.add.rectangle(794, 320, 86, 210, 0x8c5b2e, 0.92);
+    for (let index = 0; index < 5; index += 1) {
+      this.add.rectangle(640, 226 + index * 44, 380, 9, 0xffd23f, 0.92);
+    }
+    this.add.circle(396, 422, 34, 0xfff4c7, 1).setStrokeStyle(4, 0x8c5b2e);
+    this.add.circle(884, 422, 34, 0xff9ec7, 1).setStrokeStyle(4, 0x8c5b2e);
+
+    const progressBar = this.add.rectangle(640, 404, 520, 20, 0xffffff, 0.32).setStrokeStyle(3, 0x102033, 0.7);
+    const progressFill = this.add.rectangle(382, 404, 0, 20, 0x27b6a5, 1).setOrigin(0, 0.5);
     const loadingText = this.add
-      .text(640, 350, "Loading Sergio's birthday course...", {
+      .text(640, 342, "Loading Sergio's birthday course...", {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '30px',
+        fontSize: '34px',
         color: '#102033',
         fontStyle: '900',
         backgroundColor: 'rgba(255, 255, 255, 0.8)',
         padding: { x: 18, y: 10 }
       })
       .setOrigin(0.5);
+    const catDot = this.add.circle(382, 404, 16, 0xf05f73, 1).setStrokeStyle(3, 0xffffff);
 
     const updateProgress = (value: number) => {
       progressFill.width = 516 * value;
+      catDot.x = 382 + 516 * value;
     };
 
     this.load.on('progress', updateProgress);
@@ -32,6 +47,7 @@ export class BootScene extends Phaser.Scene {
       progressBar.destroy();
       progressFill.destroy();
       loadingText.destroy();
+      catDot.destroy();
     });
 
     for (const key of TITLE_ASSET_KEYS) {

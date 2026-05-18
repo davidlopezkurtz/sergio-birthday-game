@@ -74,37 +74,57 @@ export class BakingMiniGameScene extends Phaser.Scene {
   create(data: BakingMiniGameSceneData): void {
     this.cameras.main.setBackgroundColor('rgba(16, 32, 51, 0.72)');
     this.add.rectangle(640, 360, 1280, 720, 0x102033, 0.72);
-    this.add.rectangle(640, 360, 940, 570, 0xffffff, 1).setStrokeStyle(7, 0xffd23f);
+    this.add.rectangle(640, 360, 1080, 620, 0xfffcf1, 1).setStrokeStyle(7, 0xffd23f);
+    this.add.rectangle(640, 104, 1020, 86, 0x6b4a8c, 1).setStrokeStyle(4, 0x102033);
 
     this.add
-      .text(640, 96, 'Final Bake-Off Multiplier', {
+      .text(640, 82, 'Final Bake-Off Multiplier', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '34px',
-        color: '#6b4a8c',
+        color: '#ffffff',
         fontStyle: '900'
       })
       .setOrigin(0.5);
 
     this.add
-      .text(640, 140, data.levelTitle ?? this.station.label, {
+      .text(640, 124, data.levelTitle ?? this.station.label, {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '38px',
-        color: '#102033',
+        fontSize: '27px',
+        color: '#ffec9f',
         fontStyle: '900',
         align: 'center',
-        wordWrap: { width: 860 }
+        wordWrap: { width: 900 }
       })
       .setOrigin(0.5);
 
+    this.add.rectangle(320, 292, 318, 286, 0xffffff, 0.92).setStrokeStyle(4, 0x102033, 0.5);
     this.add
-      .text(732, 198, `Course score: ${this.actionScore.toLocaleString('en-US')}\nPerfect bake turns it into x2.0`, {
+      .text(320, 174, 'Bake stage', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '22px',
         color: '#2f4056',
+        fontStyle: '900'
+      })
+      .setOrigin(0.5);
+
+    this.add.rectangle(870, 222, 352, 126, 0x102033, 0.92).setStrokeStyle(4, 0xffd23f);
+    this.add
+      .text(870, 206, `Course score: ${this.actionScore.toLocaleString('en-US')}`, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '24px',
+        color: '#ffffff',
         fontStyle: '900',
-        align: 'center',
-        lineSpacing: 4,
-        wordWrap: { width: 470 }
+        align: 'center'
+      })
+      .setOrigin(0.5)
+      .setDepth(4);
+    this.add
+      .text(870, 252, 'Perfect bake = x2.0', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '26px',
+        color: '#ffec9f',
+        fontStyle: '900',
+        align: 'center'
       })
       .setOrigin(0.5)
       .setDepth(4);
@@ -113,18 +133,18 @@ export class BakingMiniGameScene extends Phaser.Scene {
     this.createRecipeSlots();
 
     this.promptText = this.add
-      .text(640, 374, '', {
+      .text(640, 426, '', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '27px',
+        fontSize: '26px',
         color: '#102033',
         fontStyle: '900',
         align: 'center',
-        wordWrap: { width: 860 }
+        wordWrap: { width: 920 }
       })
       .setOrigin(0.5);
 
     this.feedbackText = this.add
-      .text(640, 580, 'Tap ingredients in recipe order. Then solve one ingredient math question.', {
+      .text(640, 620, 'Build the judge ticket, then solve one ingredient math question.', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '22px',
         color: '#2f4056',
@@ -135,7 +155,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.mistakeText = this.add
-      .text(640, 618, 'Multiplier ladder: x2.0 perfect | x1.5 one miss | x1.2 retry', {
+      .text(640, 656, 'Multiplier ladder: x2.0 perfect | x1.5 one miss | x1.2 retry', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '20px',
         color: '#6b4a8c',
@@ -151,13 +171,36 @@ export class BakingMiniGameScene extends Phaser.Scene {
   }
 
   private drawCupcakePreview(): void {
-    this.add.rectangle(328, 258, 132, 92, 0xd56b6b, 1).setStrokeStyle(5, 0x102033);
-    this.add.circle(328, 210, 58, 0xff9ec7, 0.94).setStrokeStyle(5, 0x102033);
-    this.add.circle(300, 200, 8, 0xffd23f, 1);
-    this.add.circle(330, 182, 8, 0x27b6a5, 1);
-    this.add.circle(360, 206, 8, 0xf05f73, 1);
+    const tray = this.add.rectangle(320, 336, 220, 30, 0x8c5b2e, 0.92).setStrokeStyle(4, 0x102033);
+    const cup = this.add.rectangle(320, 286, 136, 92, 0xd56b6b, 1).setStrokeStyle(5, 0x102033);
+    const frosting = this.add.circle(320, 238, 60, 0xff9ec7, 0.94).setStrokeStyle(5, 0x102033);
+    const sprinkles = [
+      this.add.circle(292, 228, 8, 0xffd23f, 1),
+      this.add.circle(322, 210, 8, 0x27b6a5, 1),
+      this.add.circle(352, 234, 8, 0xf05f73, 1)
+    ];
+
+    this.tweens.add({
+      targets: [frosting, ...sprinkles],
+      y: '-=8',
+      duration: 520,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+    this.tweens.add({
+      targets: tray,
+      scaleX: 1.04,
+      duration: 520,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+    cup.setDepth(2);
+    frosting.setDepth(3);
+    sprinkles.forEach((sprinkle) => sprinkle.setDepth(4));
     this.add
-      .text(328, 315, 'Bake-Off', {
+      .text(320, 382, 'Tap fast. Bake smart.', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '20px',
         color: '#102033',
@@ -168,7 +211,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
 
   private createRecipeSlots(): void {
     this.add
-      .text(720, 256, 'Recipe order', {
+      .text(640, 286, 'Judge ticket recipe order', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '24px',
         color: '#2f4056',
@@ -176,12 +219,13 @@ export class BakingMiniGameScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    const startX = 580;
+    const gap = 128;
+    const startX = 640 - ((this.station.recipe.length - 1) * gap) / 2;
     this.station.recipe.forEach((ingredient, index) => {
-      const x = startX + index * 140;
-      const slot = this.add.rectangle(x, 312, 112, 78, 0xfff4c7, 1).setStrokeStyle(4, 0x102033);
+      const x = startX + index * gap;
+      const slot = this.add.rectangle(x, 346, 108, 74, 0xfff4c7, 1).setStrokeStyle(4, 0x102033);
       const text = this.add
-        .text(x, 312, `${index + 1}. ${this.ingredientLabel(ingredient)}`, {
+        .text(x, 346, `${index + 1}. ${this.ingredientLabel(ingredient)}`, {
           fontFamily: 'Arial, sans-serif',
           fontSize: '18px',
           color: '#102033',
@@ -198,16 +242,16 @@ export class BakingMiniGameScene extends Phaser.Scene {
 
   private createIngredientButtons(): void {
     const positions = [
-      { x: 310, y: 492 },
-      { x: 530, y: 492 },
-      { x: 750, y: 492 },
-      { x: 970, y: 492 }
+      { x: 310, y: 532 },
+      { x: 530, y: 532 },
+      { x: 750, y: 532 },
+      { x: 970, y: 532 }
     ];
 
     INGREDIENTS.forEach((display, index) => {
       const container = this.add.container(positions[index].x, positions[index].y);
       const background = this.add
-        .rectangle(0, 0, 188, 86, display.color)
+        .rectangle(0, 0, 188, 80, display.color)
         .setStrokeStyle(5, 0x102033)
         .setInteractive({ useHandCursor: true });
       const textColor = display.ingredient === 'sprinkles' || display.ingredient === 'frosting' ? '#102033' : '#ffffff';
@@ -303,16 +347,16 @@ export class BakingMiniGameScene extends Phaser.Scene {
 
   private createAnswerButtons(): void {
     const positions = [
-      { x: 310, y: 492 },
-      { x: 530, y: 492 },
-      { x: 750, y: 492 },
-      { x: 970, y: 492 }
+      { x: 310, y: 532 },
+      { x: 530, y: 532 },
+      { x: 750, y: 532 },
+      { x: 970, y: 532 }
     ];
 
     this.challenge.choices.forEach((choice, index) => {
       const container = this.add.container(positions[index].x, positions[index].y);
       const background = this.add
-        .rectangle(0, 0, 188, 86, 0xffd23f)
+        .rectangle(0, 0, 188, 80, 0xffd23f)
         .setStrokeStyle(5, 0x102033)
         .setInteractive({ useHandCursor: true });
       const numberText = this.add
