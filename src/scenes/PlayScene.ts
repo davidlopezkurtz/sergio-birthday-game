@@ -186,6 +186,7 @@ export class PlayScene extends Phaser.Scene {
   private countdownText?: Phaser.GameObjects.Text;
   private touchMoveDirection = 0;
   private touchClimbDirection = 0;
+  private facingDirection: -1 | 1 = 1;
   private climbing = false;
   private lastJumpAt = Number.NEGATIVE_INFINITY;
   private lastSlideAt = Number.NEGATIVE_INFINITY;
@@ -241,6 +242,7 @@ export class PlayScene extends Phaser.Scene {
     this.hasMoved = false;
     this.touchMoveDirection = 0;
     this.touchClimbDirection = 0;
+    this.facingDirection = 1;
     this.climbing = false;
     this.lastJumpAt = Number.NEGATIVE_INFINITY;
     this.lastSlideAt = Number.NEGATIVE_INFINITY;
@@ -938,6 +940,7 @@ export class PlayScene extends Phaser.Scene {
     }
 
     const power = this.heldPower;
+    const powerDirection = this.facingDirection;
     this.lastPowerAt = this.elapsedMs;
     this.resolveNearbyObstaclesForAction('power');
     this.collectNearbyThrustersForAction('power');
@@ -952,11 +955,12 @@ export class PlayScene extends Phaser.Scene {
 
     switch (power) {
       case 'rook':
-        this.cat.x = Phaser.Math.Clamp(this.cat.x + 180, this.startX, this.worldWidth - 40);
+        this.cat.x = Phaser.Math.Clamp(this.cat.x + 180 * powerDirection, this.startX, this.worldWidth - 40);
+        this.cat.setFlipX(powerDirection < 0);
         this.flashCat(0xffd23f);
         break;
       case 'knight':
-        if (!this.launchKnightToNextPlatform()) {
+        if (!this.launchKnightToNextPlatform(powerDirection)) {
           this.currentSurfaceY = this.catSurfaceY();
           this.verticalVelocity = CAT_POWER_JUMP_VELOCITY;
           this.onGround = false;
@@ -969,7 +973,8 @@ export class PlayScene extends Phaser.Scene {
         this.verticalVelocity = CAT_BISHOP_JUMP_VELOCITY;
         this.onGround = false;
         this.climbing = false;
-        this.cat.x = Phaser.Math.Clamp(this.cat.x + 90, this.startX, this.worldWidth - 40);
+        this.cat.x = Phaser.Math.Clamp(this.cat.x + 90 * powerDirection, this.startX, this.worldWidth - 40);
+        this.cat.setFlipX(powerDirection < 0);
         this.flashCat(0x6f64d9);
         break;
       case 'queen':
@@ -991,7 +996,7 @@ export class PlayScene extends Phaser.Scene {
     });
   }
 
-  private launchKnightToNextPlatform(): boolean {
+  private launchKnightToNextPlatform(direction: -1 | 1): boolean {
     const catSurfaceY = this.catSurfaceY();
     const targetPlatform = this.level.platforms
       .filter((platform) => platform.y < catSurfaceY - 90)
@@ -1003,7 +1008,7 @@ export class PlayScene extends Phaser.Scene {
 
     const minX = targetPlatform.x - targetPlatform.width / 2 + 76;
     const maxX = targetPlatform.x + targetPlatform.width / 2 - 76;
-    const targetX = Phaser.Math.Clamp(this.cat.x + KNIGHT_PLATFORM_X_OFFSET, minX, maxX);
+    const targetX = Phaser.Math.Clamp(this.cat.x + KNIGHT_PLATFORM_X_OFFSET * direction, minX, maxX);
     const targetY = targetPlatform.y - this.catFootOffset();
 
     this.powerTraveling = true;
@@ -1012,6 +1017,7 @@ export class PlayScene extends Phaser.Scene {
     this.onGround = false;
     this.verticalVelocity = 0;
     this.setCatPose('catJumpFrame1');
+    this.cat.setFlipX(direction < 0);
 
     this.tweens.killTweensOf(this.cat);
     this.tweens.add({
@@ -1292,8 +1298,9 @@ export class PlayScene extends Phaser.Scene {
     }
 
     const baseSpeed = direction > 0 ? CAT_BASE_SPEED : CAT_BACK_SPEED;
-    const speed = this.activePower && this.activePowerType === 'rook' && direction > 0 ? 520 : baseSpeed;
+    const speed = this.activePower && this.activePowerType === 'rook' ? 520 : baseSpeed;
     this.cat.x = Phaser.Math.Clamp(this.cat.x + (direction * speed * delta) / 1000, 48, this.worldWidth - 48);
+    this.facingDirection = direction;
     this.cat.setFlipX(direction < 0);
   }
 

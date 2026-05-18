@@ -75,6 +75,7 @@ const SERVE_SWEET_WIDTH = SERVE_SWEET_RIGHT - SERVE_SWEET_LEFT;
 const SERVE_METER_CENTER_X = (SERVE_METER_LEFT + SERVE_METER_RIGHT) / 2;
 const SERVE_SWEET_CENTER_X = (SERVE_SWEET_LEFT + SERVE_SWEET_RIGHT) / 2;
 const SERVE_METER_SPEED = 340;
+const BAKEOFF_WATCHDOG_MS = 68000;
 const rackAnchorGuide = JSON.parse(trayPieceAnchorGuideJson) as RackAnchorGuide;
 
 const STATIONS: StationDisplay[] = [
@@ -100,7 +101,9 @@ export class BakingMiniGameScene extends Phaser.Scene {
   private levelTitle = '';
   private actionScore = 0;
   private completion?: LevelCompletionSnapshot;
-  private recoveryTimer?: number;
+  private watchdogTimer?: number;
+  private resultTimer?: number;
+  private finished = false;
   private currentTicketIndex = 0;
   private currentStepIndex = 0;
   private recipeMistakes = 0;
@@ -149,11 +152,12 @@ export class BakingMiniGameScene extends Phaser.Scene {
     this.levelTitle = data.levelTitle ?? data.station.label;
     this.actionScore = data.actionScore ?? 0;
     this.completion = data.completion;
-    this.clearRecoveryTimer();
+    this.finished = false;
+    this.clearSceneTimers();
     if (this.completion) {
-      this.recoveryTimer = window.setTimeout(() => {
+      this.watchdogTimer = window.setTimeout(() => {
         this.finishWithResult(fallbackBakeOffResult());
-      }, 18000);
+      }, BAKEOFF_WATCHDOG_MS);
     }
     this.currentTicketIndex = 0;
     this.currentStepIndex = 0;
@@ -229,7 +233,6 @@ export class BakingMiniGameScene extends Phaser.Scene {
   }
 
   create(data: BakingMiniGameSceneData): void {
-    this.clearRecoveryTimer();
     this.createBackdrop(data.levelTitle ?? this.levelTitle);
     this.createTicketPanel();
     this.createBakeStage();
@@ -240,7 +243,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
     this.updateStatusText();
     this.refreshStationHighlights();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.clearRecoveryTimer();
+      this.clearSceneTimers();
       this.cleanupKeyboardHandlers();
     });
   }
@@ -712,6 +715,13 @@ export class BakingMiniGameScene extends Phaser.Scene {
     const display = this.stationDisplay(step);
     const x = 640 + (stepIndex - 1.5) * 28;
     const y = 384 - Math.min(stepIndex, 5) * 9;
+    if (step === 'berry') {
+      const berries = this.addBerryCluster(stepIndex);
+      this.trayPieces.push(berries);
+      this.playIngredientAnimation(step);
+      return;
+    }
+
     const treatKey = this.treatAssetKey(step);
     const treat = this.addTreatPieceImage(treatKey, step, stepIndex);
     if (treat) {
@@ -753,6 +763,37 @@ export class BakingMiniGameScene extends Phaser.Scene {
       : this.add.circle(x, y, 22, display.color, 1).setStrokeStyle(3, 0x8c5b2e).setDepth(7);
     this.trayPieces.push(piece);
     this.popIn(piece);
+  }
+
+  private addBerryCluster(stepIndex: number): Phaser.GameObjects.Container {
+    const layout = this.trayPieceLayout('berry', stepIndex);
+    const container = this.add.container(layout.x, layout.y).setDepth(layout.depth);
+    const shadow = this.add.ellipse(0, 15, 58, 18, 0x102033, 0.16);
+    const berries = [
+      this.add.circle(-18, 2, 14, 0xd9365f, 1),
+      this.add.circle(0, -8, 15, 0xf05f73, 1),
+      this.add.circle(18, 2, 14, 0xc91f4f, 1),
+      this.add.circle(-4, 14, 13, 0xb61843, 1)
+    ];
+    const shines: Phaser.GameObjects.Arc[] = [];
+    let leaf: Phaser.GameObjects.Ellipse | undefined;
+    berries.forEach((berry, index) => {
+      berry.setStrokeStyle(3, 0x7d1733, 0.75);
+      shines.push(this.add.circle(berry.x - 4, berry.y - 5, 3, 0xffffff, 0.72));
+      if (index === 1) {
+        leaf = this.add.ellipse(10, -26, 22, 10, 0x38a16d, 0.94).setRotation(-0.45);
+      }
+    });
+    container.add([shadow, ...berries, ...shines, ...(leaf ? [leaf] : [])]);
+    container.setScale(0.35);
+    this.tweens.add({
+      targets: container,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 180,
+      ease: 'Back.easeOut'
+    });
+    return container;
   }
 
   private addCompletedTreat(cleanServe: boolean): void {
@@ -926,14 +967,20 @@ export class BakingMiniGameScene extends Phaser.Scene {
     this.updateStatusText(result);
     this.launchFinishAnimation(result);
 
-    this.time.delayedCall(1100, () => {
+    this.resultTimer = window.setTimeout(() => {
       this.finishWithResult(result);
-    });
+    }, 1100);
   }
 
   private finishWithResult(result: BakingStationResult): void {
+    if (this.finished) {
+      return;
+    }
+
+    this.finished = true;
+
     if (this.completion) {
-      this.clearRecoveryTimer();
+      this.clearSceneTimers();
       const summary = buildLevelCompletionSummary(this.completion, result);
       const summaries = (this.registry.get('scoreSummaries') ?? []) as ScoreSummary[];
       this.registry.set('scoreSummaries', upsertLevelCompletionSummary(summaries, summary));
@@ -944,13 +991,19 @@ export class BakingMiniGameScene extends Phaser.Scene {
     if (this.eventKey) {
       this.game.events.emit(this.eventKey, result);
     }
+    this.clearSceneTimers();
     this.scene.stop();
   }
 
-  private clearRecoveryTimer(): void {
-    if (this.recoveryTimer !== undefined) {
-      window.clearTimeout(this.recoveryTimer);
-      this.recoveryTimer = undefined;
+  private clearSceneTimers(): void {
+    if (this.watchdogTimer !== undefined) {
+      window.clearTimeout(this.watchdogTimer);
+      this.watchdogTimer = undefined;
+    }
+
+    if (this.resultTimer !== undefined) {
+      window.clearTimeout(this.resultTimer);
+      this.resultTimer = undefined;
     }
   }
 
