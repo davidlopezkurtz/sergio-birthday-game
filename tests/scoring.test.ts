@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { levels } from '../src/data/levels';
+import { buildLevelCompletionSummary, fallbackBakeOffResult } from '../src/game/levelCompletion';
 import {
   buildScoreSummary,
   calculateAppliedPenalty,
@@ -149,6 +150,71 @@ describe('scoring', () => {
     expect(summary.bakingStationsCompleted).toBe(1);
     expect(summary.totalBakingStations).toBe(1);
     expect(summary.score).toBe(850);
+  });
+
+  it('builds the end-level bake-off summary without the play scene event bus', () => {
+    const level = levels[0];
+    const summary = buildLevelCompletionSummary(
+      {
+        level,
+        activeElapsedMs: 46000,
+        hintsUsed: 0,
+        obstacleHits: 0,
+        obstacleClears: 4,
+        thrustersCollected: 6,
+        totalThrusters: level.pointThrusters.length,
+        maxCombo: 5,
+        obstaclePoints: 600,
+        thrusterPoints: 1500,
+        mathPoints: 0,
+        comboBonus: 450,
+        penaltyPoints: 0,
+        actionScore: 2550
+      },
+      {
+        mistakes: 0,
+        perfect: true,
+        multiplier: 2,
+        mathCorrect: 1,
+        mathAttempts: 1
+      }
+    );
+
+    expect(summary.completed).toBe(true);
+    expect(summary.bakingPoints).toBe(2550);
+    expect(summary.bakingPerfect).toBe(1);
+    expect(summary.bakingStationsCompleted).toBe(1);
+    expect(summary.totalBakingStations).toBe(1);
+    expect(summary.mathCorrect).toBe(1);
+  });
+
+  it('keeps level results reachable if the bake-off scene has to recover', () => {
+    const level = levels[1];
+    const summary = buildLevelCompletionSummary(
+      {
+        level,
+        activeElapsedMs: 61000,
+        hintsUsed: 0,
+        obstacleHits: 1,
+        obstacleClears: 3,
+        thrustersCollected: 4,
+        totalThrusters: level.pointThrusters.length,
+        maxCombo: 3,
+        obstaclePoints: 450,
+        thrusterPoints: 1000,
+        mathPoints: 0,
+        comboBonus: 200,
+        penaltyPoints: 100,
+        actionScore: 1550
+      },
+      fallbackBakeOffResult()
+    );
+
+    expect(summary.completed).toBe(true);
+    expect(summary.bakingPoints).toBe(0);
+    expect(summary.bakingPerfect).toBe(0);
+    expect(summary.bakingStationsCompleted).toBe(1);
+    expect(summary.mathAttempts).toBe(1);
   });
 
   it('formats time as minutes and padded seconds', () => {

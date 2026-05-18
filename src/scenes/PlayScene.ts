@@ -1,29 +1,25 @@
 import Phaser from 'phaser';
 import { assetsByKey, resolveAssetUrl, type AssetKey } from '../assets/assetManifest';
 import { levels } from '../data/levels';
-import { isBakingStationResult } from '../game/baking';
+import type { LevelCompletionSnapshot } from '../game/levelCompletion';
 import {
   OBSTACLE_CLEAR_POINTS,
   OBSTACLE_HIT_PENALTY_POINTS,
-  buildScoreSummary,
   calculateAppliedPenalty,
   calculateScoreFromLedger,
   formatScore,
-  formatTime,
-  replaceScoreSummary
+  formatTime
 } from '../game/scoring';
 import type {
   ActionType,
   BakingStationDefinition,
-  BakingStationResult,
   CourseLadderDefinition,
   CoursePlatformDefinition,
   LevelDefinition,
   ObstacleDefinition,
   PointThrusterDefinition,
   PowerBadgeDefinition,
-  PowerupType,
-  ScoreSummary
+  PowerupType
 } from '../types';
 
 interface PlaySceneData {
@@ -88,7 +84,6 @@ const COURSE_BAND_ALPHA = 0.16;
 const POWER_BADGE_PICKUP_RADIUS = 92;
 const KNIGHT_PLATFORM_X_OFFSET = 145;
 const KNIGHT_TRAVEL_MS = 420;
-const BAKE_OFF_RECOVERY_MS = 8000;
 const PICKUP_ASSET_BY_ACTION: Record<ActionType, AssetKey> = {
   jump: 'treat-cupcake-base',
   slide: 'treat-donut-base',
@@ -144,8 +139,6 @@ export class PlayScene extends Phaser.Scene {
   private keyPower?: Phaser.Input.Keyboard.Key;
   private keySlide?: Phaser.Input.Keyboard.Key;
   private elapsedMs = 0;
-  private mathCorrect = 0;
-  private mathAttempts = 0;
   private hintsUsed = 0;
   private obstacleHits = 0;
   private obstacleClears = 0;
@@ -155,8 +148,6 @@ export class PlayScene extends Phaser.Scene {
   private thrusterPoints = 0;
   private mathPoints = 0;
   private bakingPoints = 0;
-  private bakingPerfect = 0;
-  private bakingStationsCompleted = 0;
   private comboBonus = 0;
   private penaltyPoints = 0;
   private obstacleResolvedIds = new Set<string>();
@@ -179,7 +170,6 @@ export class PlayScene extends Phaser.Scene {
   private powerButtonGlow?: Phaser.GameObjects.Arc;
   private controlDebugText?: Phaser.GameObjects.Text;
   private bakeOffLoadingText?: Phaser.GameObjects.Text;
-  private bakeOffLoadingObjects: Phaser.GameObjects.GameObject[] = [];
   private platforms: PlatformObject[] = [];
   private obstacles: ObstacleObject[] = [];
   private thrusters: ThrusterObject[] = [];
@@ -216,8 +206,6 @@ export class PlayScene extends Phaser.Scene {
     this.worldWidth = this.level.worldWidth ?? this.level.trackLength + 800;
     this.worldHeight = this.level.worldHeight ?? DEFAULT_WORLD_HEIGHT;
     this.elapsedMs = 0;
-    this.mathCorrect = 0;
-    this.mathAttempts = 0;
     this.hintsUsed = 0;
     this.obstacleHits = 0;
     this.obstacleClears = 0;
@@ -227,8 +215,6 @@ export class PlayScene extends Phaser.Scene {
     this.thrusterPoints = 0;
     this.mathPoints = 0;
     this.bakingPoints = 0;
-    this.bakingPerfect = 0;
-    this.bakingStationsCompleted = 0;
     this.comboBonus = 0;
     this.penaltyPoints = 0;
     this.obstacleResolvedIds.clear();
@@ -244,7 +230,6 @@ export class PlayScene extends Phaser.Scene {
     this.currentCatPose = undefined;
     this.controlDebugText = undefined;
     this.bakeOffLoadingText = undefined;
-    this.bakeOffLoadingObjects = [];
     this.platforms = [];
     this.obstacles = [];
     this.thrusters = [];
@@ -1189,97 +1174,23 @@ export class PlayScene extends Phaser.Scene {
     this.activeBakingStation = true;
     const actionScore = this.currentScore();
     const station = this.buildEndBakeOffStation();
-    const eventKey = `end-bake-off-${this.level.id}-${Date.now()}`;
-    this.scene.stop('BakingMiniGameScene');
-    const bakingScene = this.scene.get('BakingMiniGameScene');
-    let settled = false;
-    let safetyTimer: number | undefined;
-    let onResult: (result: unknown) => void;
+    const completion = this.buildLevelCompletionSnapshot(actionScore);
 
-    const clearSafetyTimer = (): void => {
-      if (safetyTimer !== undefined) {
-        window.clearTimeout(safetyTimer);
-        safetyTimer = undefined;
-      }
-    };
-
-    const fallbackResult = (): void => {
-      this.showBakeOffLoading('Bake-Off did not respond. Opening results...');
-      this.finishLevelWithBakeOff({
-        mistakes: 1,
-        perfect: false,
-        multiplier: 1,
-        mathCorrect: 0,
-        mathAttempts: 1
-      });
-    };
-
-    const recoverWithoutResult = () => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-      clearSafetyTimer();
-      this.game.events.off(eventKey, onResult);
-      bakingScene.events.off(Phaser.Scenes.Events.SHUTDOWN, recoverWithoutResult);
-      this.activeBakingStation = false;
-      this.showBakeOffLoading('Bake-Off recovered. Opening results...');
-      window.setTimeout(fallbackResult, 650);
-    };
-
-    onResult = (result: unknown) => {
-      if (settled) {
-        return;
-      }
-
-      if (!isBakingStationResult(result)) {
-        recoverWithoutResult();
-        return;
-      }
-
-      settled = true;
-      clearSafetyTimer();
-      bakingScene.events.off(Phaser.Scenes.Events.SHUTDOWN, recoverWithoutResult);
-      this.activeBakingStation = false;
-      this.finishLevelWithBakeOff(result);
-    };
-
-    this.game.events.once(eventKey, onResult);
-    bakingScene.events.once(Phaser.Scenes.Events.SHUTDOWN, recoverWithoutResult);
-
-    try {
-      this.scene.launch('BakingMiniGameScene', {
+    this.time.delayedCall(120, () => {
+      this.scene.start('BakingMiniGameScene', {
         station,
-        eventKey,
         stationNumber: this.level.index + 1,
         actionScore,
-        levelTitle: this.level.title
+        levelTitle: this.level.title,
+        completion
       });
-      this.scene.pause('PlayScene');
-      safetyTimer = window.setTimeout(recoverWithoutResult, BAKE_OFF_RECOVERY_MS);
-    } catch {
-      recoverWithoutResult();
-    }
+    });
   }
 
-  private finishLevelWithBakeOff(result: BakingStationResult): void {
-    this.destroyBakeOffLoading();
-    this.mathCorrect = result.mathCorrect;
-    this.mathAttempts = result.mathAttempts;
-    this.bakingStationsCompleted = 1;
-    this.bakingPerfect = result.perfect ? 1 : 0;
-    this.bakingPoints = Math.max(0, Math.round(this.currentScore() * (result.multiplier - 1)));
-
-    if (result.mistakes > 0) {
-      this.breakCombo();
-    }
-
-    const summary = buildScoreSummary({
+  private buildLevelCompletionSnapshot(actionScore: number): LevelCompletionSnapshot {
+    return {
       level: this.level,
       activeElapsedMs: this.elapsedMs,
-      mathCorrect: this.mathCorrect,
-      mathAttempts: this.mathAttempts,
       hintsUsed: this.hintsUsed,
       obstacleHits: this.obstacleHits,
       obstacleClears: this.obstacleClears,
@@ -1289,32 +1200,20 @@ export class PlayScene extends Phaser.Scene {
       obstaclePoints: this.obstaclePoints,
       thrusterPoints: this.thrusterPoints,
       mathPoints: this.mathPoints,
-      bakingPoints: this.bakingPoints,
-      bakingPerfect: this.bakingPerfect,
-      bakingStationsCompleted: this.bakingStationsCompleted,
-      totalBakingStations: 1,
       comboBonus: this.comboBonus,
       penaltyPoints: this.penaltyPoints,
-      completed: true
-    });
-
-    const summaries = (this.registry.get('scoreSummaries') ?? []) as ScoreSummary[];
-    this.registry.set('scoreSummaries', replaceScoreSummary(summaries, summary));
-    this.activeBakingStation = false;
-    this.completed = true;
-    this.scene.stop('BakingMiniGameScene');
-    this.scene.resume('PlayScene');
-    this.scene.start('ResultsScene', { levelIndex: this.level.index, summary });
+      actionScore
+    };
   }
 
   private showBakeOffLoading(message: string): void {
     if (!this.bakeOffLoadingText) {
-      const panel = this.add
+      this.add
         .rectangle(640, 360, 620, 170, 0xfffcf1, 0.96)
         .setStrokeStyle(6, 0xffd23f, 0.96)
         .setScrollFactor(0)
         .setDepth(70);
-      const shadow = this.add.rectangle(646, 370, 620, 170, 0x102033, 0.18).setScrollFactor(0).setDepth(69);
+      this.add.rectangle(646, 370, 620, 170, 0x102033, 0.18).setScrollFactor(0).setDepth(69);
       this.bakeOffLoadingText = this.add
         .text(640, 360, message, {
           fontFamily: 'Arial, sans-serif',
@@ -1327,17 +1226,10 @@ export class PlayScene extends Phaser.Scene {
         .setOrigin(0.5)
         .setScrollFactor(0)
         .setDepth(71);
-      this.bakeOffLoadingObjects = [shadow, panel, this.bakeOffLoadingText];
       return;
     }
 
     this.bakeOffLoadingText.setText(message);
-  }
-
-  private destroyBakeOffLoading(): void {
-    this.bakeOffLoadingObjects.forEach((object) => object.destroy());
-    this.bakeOffLoadingObjects = [];
-    this.bakeOffLoadingText = undefined;
   }
 
   private buildEndBakeOffStation(): BakingStationDefinition {

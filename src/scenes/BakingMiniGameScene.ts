@@ -17,14 +17,21 @@ import {
   type BakeRushStep,
   type BakeRushTicket
 } from '../game/bakeRush';
-import type { BakingIngredient, BakingStationDefinition, BakingStationResult } from '../types';
+import {
+  buildLevelCompletionSummary,
+  fallbackBakeOffResult,
+  type LevelCompletionSnapshot,
+  upsertLevelCompletionSummary
+} from '../game/levelCompletion';
+import type { BakingIngredient, BakingStationDefinition, BakingStationResult, ScoreSummary } from '../types';
 
 export interface BakingMiniGameSceneData {
   station: BakingStationDefinition;
-  eventKey: string;
+  eventKey?: string;
   stationNumber: number;
   actionScore?: number;
   levelTitle?: string;
+  completion?: LevelCompletionSnapshot;
 }
 
 interface StationDisplay {
@@ -92,6 +99,8 @@ export class BakingMiniGameScene extends Phaser.Scene {
   private eventKey = '';
   private levelTitle = '';
   private actionScore = 0;
+  private completion?: LevelCompletionSnapshot;
+  private recoveryTimer?: number;
   private currentTicketIndex = 0;
   private currentStepIndex = 0;
   private recipeMistakes = 0;
@@ -136,9 +145,16 @@ export class BakingMiniGameScene extends Phaser.Scene {
   init(data: BakingMiniGameSceneData): void {
     this.station = data.station;
     this.order = buildBakeRushOrder(data.station, data.stationNumber);
-    this.eventKey = data.eventKey;
+    this.eventKey = data.eventKey ?? '';
     this.levelTitle = data.levelTitle ?? data.station.label;
     this.actionScore = data.actionScore ?? 0;
+    this.completion = data.completion;
+    this.clearRecoveryTimer();
+    if (this.completion) {
+      this.recoveryTimer = window.setTimeout(() => {
+        this.finishWithResult(fallbackBakeOffResult());
+      }, 18000);
+    }
     this.currentTicketIndex = 0;
     this.currentStepIndex = 0;
     this.recipeMistakes = 0;
@@ -213,6 +229,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
   }
 
   create(data: BakingMiniGameSceneData): void {
+    this.clearRecoveryTimer();
     this.createBackdrop(data.levelTitle ?? this.levelTitle);
     this.createTicketPanel();
     this.createBakeStage();
@@ -222,7 +239,10 @@ export class BakingMiniGameScene extends Phaser.Scene {
     this.updatePrompt();
     this.updateStatusText();
     this.refreshStationHighlights();
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanupKeyboardHandlers());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.clearRecoveryTimer();
+      this.cleanupKeyboardHandlers();
+    });
   }
 
   update(_time: number, delta: number): void {
@@ -907,9 +927,31 @@ export class BakingMiniGameScene extends Phaser.Scene {
     this.launchFinishAnimation(result);
 
     this.time.delayedCall(1100, () => {
-      this.game.events.emit(this.eventKey, result);
-      this.scene.stop();
+      this.finishWithResult(result);
     });
+  }
+
+  private finishWithResult(result: BakingStationResult): void {
+    if (this.completion) {
+      this.clearRecoveryTimer();
+      const summary = buildLevelCompletionSummary(this.completion, result);
+      const summaries = (this.registry.get('scoreSummaries') ?? []) as ScoreSummary[];
+      this.registry.set('scoreSummaries', upsertLevelCompletionSummary(summaries, summary));
+      this.scene.start('ResultsScene', { levelIndex: this.completion.level.index, summary });
+      return;
+    }
+
+    if (this.eventKey) {
+      this.game.events.emit(this.eventKey, result);
+    }
+    this.scene.stop();
+  }
+
+  private clearRecoveryTimer(): void {
+    if (this.recoveryTimer !== undefined) {
+      window.clearTimeout(this.recoveryTimer);
+      this.recoveryTimer = undefined;
+    }
   }
 
   private launchFinishAnimation(result: BakingStationResult): void {
