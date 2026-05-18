@@ -33,7 +33,6 @@ interface PlaySceneData {
 interface ObstacleObject {
   definition: ObstacleDefinition;
   sprite: Phaser.GameObjects.Image;
-  cue: Phaser.GameObjects.Container;
   baseY: number;
   phase: number;
 }
@@ -49,8 +48,6 @@ interface ThrusterObject {
   ring: Phaser.GameObjects.Arc;
   core: Phaser.GameObjects.Arc | Phaser.GameObjects.Image;
   sprinkles: Array<Phaser.GameObjects.Arc | Phaser.GameObjects.Image>;
-  valueText: Phaser.GameObjects.Text;
-  cue?: Phaser.GameObjects.Container;
 }
 
 interface PowerBadgeObject {
@@ -58,7 +55,6 @@ interface PowerBadgeObject {
   power: PowerupType;
   sprite: Phaser.GameObjects.Image;
   ring: Phaser.GameObjects.Arc;
-  cue: Phaser.GameObjects.Container;
   collected: boolean;
 }
 
@@ -73,7 +69,7 @@ const CAT_JUMP_VELOCITY = -920;
 const CAT_POWER_JUMP_VELOCITY = -850;
 const CAT_BISHOP_JUMP_VELOCITY = -650;
 const GRAVITY = 1650;
-const LADDER_GRAB_X_TOLERANCE = 44;
+const LADDER_GRAB_X_TOLERANCE = 36;
 const LADDER_GRAB_Y_TOLERANCE = 28;
 const LADDER_EXIT_LOCKOUT_MS = 520;
 const COUNTDOWN_MS = 1400;
@@ -90,7 +86,8 @@ const CONTROL_ALPHA_DESKTOP = 0.2;
 const CONTROL_ALPHA_PRESSED = 0.88;
 const COURSE_BAND_ALPHA = 0.16;
 const POWER_BADGE_PICKUP_RADIUS = 92;
-const ACTION_CUE_DEPTH = 12;
+const KNIGHT_PLATFORM_X_OFFSET = 145;
+const KNIGHT_TRAVEL_MS = 420;
 const PICKUP_ASSET_BY_ACTION: Record<ActionType, AssetKey> = {
   jump: 'treat-cupcake-base',
   slide: 'treat-donut-base',
@@ -202,6 +199,7 @@ export class PlayScene extends Phaser.Scene {
   private ladderGrabLockedUntil = Number.NEGATIVE_INFINITY;
   private bumpFeedbackStartedAt = Number.NEGATIVE_INFINITY;
   private bumpFeedbackUntil = Number.NEGATIVE_INFINITY;
+  private powerTraveling = false;
 
   constructor() {
     super('PlayScene');
@@ -258,6 +256,7 @@ export class PlayScene extends Phaser.Scene {
     this.ladderGrabLockedUntil = Number.NEGATIVE_INFINITY;
     this.bumpFeedbackStartedAt = Number.NEGATIVE_INFINITY;
     this.bumpFeedbackUntil = Number.NEGATIVE_INFINITY;
+    this.powerTraveling = false;
   }
 
   preload(): void {
@@ -405,10 +404,11 @@ export class PlayScene extends Phaser.Scene {
     const floorEdgeKey = this.floorEdgeAssetKey();
     this.add.rectangle(this.worldWidth / 2, this.groundY + 26, this.worldWidth + 200, 28, 0x102033, 0.2).setDepth(2);
     if (this.textures.exists(floorEdgeKey)) {
-      this.add
+      const groundEdge = this.add
         .tileSprite(this.worldWidth / 2, this.groundY + 9, this.worldWidth + 200, assetsByKey[floorEdgeKey].height, floorEdgeKey)
         .setDepth(4)
         .setAlpha(0.98);
+      groundEdge.setFlipY(true);
     } else {
       this.add.rectangle(this.worldWidth / 2, this.groundY + 8, this.worldWidth + 200, 18, 0xffffff, 0.55);
     }
@@ -417,34 +417,36 @@ export class PlayScene extends Phaser.Scene {
   private createCat(): void {
     this.cat = this.add.sprite(this.startX, this.groundY - CAT_STAND_FOOT_OFFSET, 'cat');
     this.setAssetDisplaySize(this.cat, 'cat');
-    this.cat.setDepth(5);
+    this.cat.setDepth(9);
   }
 
   private createLadders(): void {
     const ladderKey = this.ladderAssetKey();
-    for (const [index, ladder] of (this.level.ladders ?? []).entries()) {
+    for (const ladder of this.level.ladders ?? []) {
       const top = Math.min(ladder.yTop, ladder.yBottom);
       const bottom = Math.max(ladder.yTop, ladder.yBottom);
-      const y = (top + bottom) / 2;
-      const height = bottom - top + 20;
+      this.renderLadder(ladder, ladderKey, top, bottom);
+    }
+  }
 
-      if (this.textures.exists(ladderKey)) {
-        this.add.tileSprite(ladder.x, y, 104, height + 18, ladderKey).setDepth(2).setAlpha(0.98);
-        if (index === 0) {
-          this.createLadderCue(ladder.x, bottom - 58);
-        }
-        continue;
-      }
+  private renderLadder(
+    ladder: CourseLadderDefinition,
+    ladderKey: AssetKey,
+    top: number,
+    bottom: number
+  ): void {
+    const y = (top + bottom) / 2;
+    const height = bottom - top + 28;
 
-      this.add.rectangle(ladder.x - 25, y, 8, height, 0x8c5b2e, 0.94).setDepth(2);
-      this.add.rectangle(ladder.x + 25, y, 8, height, 0x8c5b2e, 0.94).setDepth(2);
+    if (this.textures.exists(ladderKey)) {
+      this.add.image(ladder.x, y, ladderKey).setDisplaySize(136, height + 42).setDepth(4.2).setAlpha(0.72);
+    }
 
-      for (let rungY = top + 18; rungY <= bottom - 16; rungY += 34) {
-        this.add.rectangle(ladder.x, rungY, 66, 7, 0xffd23f, 0.92).setDepth(2);
-      }
-      if (index === 0) {
-        this.createLadderCue(ladder.x, bottom - 58);
-      }
+    this.add.rectangle(ladder.x - 43, y, 9, height, 0x8c5b2e, 0.96).setDepth(4.8);
+    this.add.rectangle(ladder.x + 43, y, 9, height, 0x8c5b2e, 0.96).setDepth(4.8);
+
+    for (let rungY = top + 20; rungY <= bottom - 20; rungY += 34) {
+      this.add.rectangle(ladder.x, rungY, 82, 7, 0xffd23f, 0.94).setDepth(4.9);
     }
   }
 
@@ -487,15 +489,8 @@ export class PlayScene extends Phaser.Scene {
       const sprite = this.add.image(obstacle.x, y, assetKey);
       sprite.setDepth(4);
       this.setAssetDisplaySize(sprite, assetKey, this.getObstacleScale(obstacle.kind));
-      const cue = this.createActionCueChip(
-        this.actionForObstacle(obstacle.kind),
-        obstacle.x,
-        this.obstacleCueY(y, sprite),
-        ACTION_CUE_DEPTH,
-        obstacle.kind === 'cakeWall' ? 1.08 : 0.94
-      );
 
-      this.obstacles.push({ definition: obstacle, sprite, cue, baseY: y, phase: obstacle.x / 180 });
+      this.obstacles.push({ definition: obstacle, sprite, baseY: y, phase: obstacle.x / 180 });
     }
   }
 
@@ -506,30 +501,16 @@ export class PlayScene extends Phaser.Scene {
       const color = this.thrusterColor(thruster);
       const radius = this.thrusterRadius(thruster);
       const ring = this.add
-        .circle(thruster.x, thruster.y + radius * 0.48, radius * 0.68, 0x102033, 0.14)
+        .circle(thruster.x, thruster.y + radius * 0.28, radius * 0.56, 0x102033, 0.12)
         .setDepth(6);
       const pickupAssetKey = this.pickupAssetKey(thruster.requiredAction);
       const core = this.textures.exists(pickupAssetKey)
-        ? this.add.image(thruster.x, thruster.y, pickupAssetKey).setDepth(7).setDisplaySize(radius * 1.6, radius * 1.35)
+        ? this.add.image(thruster.x, thruster.y, pickupAssetKey).setDepth(7).setDisplaySize(radius * 1.14, radius * 0.98)
         : this.add.circle(thruster.x, thruster.y, radius * 0.62, 0xfff4c7, 0.98).setStrokeStyle(4, 0x8c5b2e, 0.84).setDepth(7);
       const sprinkles: Array<Phaser.GameObjects.Arc | Phaser.GameObjects.Image> = [
-        this.add.circle(thruster.x - radius * 0.48, thruster.y - radius * 0.28, radius * 0.12, color, 1).setDepth(8),
-        this.add.circle(thruster.x + radius * 0.5, thruster.y - radius * 0.22, radius * 0.1, 0xf05f73, 1).setDepth(8)
+        this.add.circle(thruster.x - radius * 0.36, thruster.y - radius * 0.22, radius * 0.08, color, 1).setDepth(8),
+        this.add.circle(thruster.x + radius * 0.38, thruster.y - radius * 0.18, radius * 0.07, 0xf05f73, 1).setDepth(8)
       ];
-      const valueText = this.add
-        .text(thruster.x + radius * 0.82, thruster.y + radius * 0.5, `+${thruster.value}`, {
-          fontFamily: 'Arial, sans-serif',
-          fontSize: thruster.value >= 500 ? '18px' : '16px',
-          color: '#ffffff',
-          fontStyle: '900',
-          backgroundColor: 'rgba(16,32,51,0.82)',
-          padding: { x: 6, y: 3 }
-        })
-        .setOrigin(0.5)
-        .setDepth(8);
-      const cue = thruster.requiredAction
-        ? this.createActionCueChip(thruster.requiredAction, thruster.x - radius * 0.82, thruster.y + radius * 0.82, 9, 0.62)
-        : undefined;
 
       this.tweens.add({
         targets: [core, ...sprinkles],
@@ -540,7 +521,7 @@ export class PlayScene extends Phaser.Scene {
         ease: 'Sine.easeInOut'
       });
 
-      this.thrusters.push({ definition: thruster, ring, core, sprinkles, valueText, cue });
+      this.thrusters.push({ definition: thruster, ring, core, sprinkles });
     }
   }
 
@@ -556,10 +537,9 @@ export class PlayScene extends Phaser.Scene {
       const ring = this.add.circle(x, y, 48, 0xffd23f, 0.2).setStrokeStyle(5, 0xffd23f, 0.9).setDepth(6);
       const sprite = this.add.image(x, y, power).setDepth(7);
       this.setAssetDisplaySize(sprite, power, 0.62);
-      const cue = this.createBadgeCue(x, y - 66, power);
 
       this.tweens.add({
-        targets: [ring, sprite, cue],
+        targets: [ring, sprite],
         y: '-=7',
         duration: 760,
         yoyo: true,
@@ -567,79 +547,7 @@ export class PlayScene extends Phaser.Scene {
         ease: 'Sine.easeInOut'
       });
 
-      this.powerBadges.push({ definition: badgeDefinition, power, sprite, ring, cue, collected: false });
-    });
-  }
-
-  private createActionCueChip(
-    action: ActionType,
-    x: number,
-    y: number,
-    depth = ACTION_CUE_DEPTH,
-    scale = 1
-  ): Phaser.GameObjects.Container {
-    const color = this.actionColor(action);
-    const container = this.add.container(x, y).setDepth(depth).setScale(scale);
-    const back = this.add.circle(0, 0, 25, color, 0.92).setStrokeStyle(4, 0xffffff, 0.92);
-    const shadow = this.add.circle(3, 5, 25, 0x102033, 0.18);
-
-    const icon = this.actionCueIcon(action);
-    container.add([shadow, back, ...icon]);
-    return container;
-  }
-
-  private actionCueIcon(action: ActionType): Phaser.GameObjects.GameObject[] {
-    if (action === 'jump') {
-      return [
-        this.add.triangle(0, -5, 0, 12, 20, 12, 10, -10, 0xffffff, 1),
-        this.add.rectangle(0, 12, 24, 5, 0xffffff, 1)
-      ];
-    }
-
-    if (action === 'slide') {
-      return [
-        this.add.rectangle(0, 9, 30, 6, 0xffffff, 1),
-        this.add.rectangle(-4, 0, 22, 8, 0xffffff, 1),
-        this.add.triangle(13, 0, 0, -8, 0, 8, 12, 0, 0xffffff, 1)
-      ];
-    }
-
-    return [
-      this.add.star(0, 0, 5, 7, 18, 0xffffff, 1),
-      this.add.circle(0, 0, 6, 0xffd23f, 1)
-    ];
-  }
-
-  private createBadgeCue(x: number, y: number, power: PowerupType): Phaser.GameObjects.Container {
-    const container = this.add.container(x, y).setDepth(8);
-    const back = this.add.rectangle(0, 0, 86, 32, 0x102033, 0.86).setStrokeStyle(3, 0xffd23f, 0.94);
-    const text = this.add
-      .text(0, 0, `Get ${this.shortPowerLabel(power)}`, {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '14px',
-        color: '#ffec9f',
-        fontStyle: '900'
-      })
-      .setOrigin(0.5);
-    container.add([back, text]);
-    return container;
-  }
-
-  private createLadderCue(x: number, y: number): void {
-    const cue = this.add.container(x, y).setDepth(8);
-    cue.add([
-      this.add.circle(0, 0, 22, 0x102033, 0.72).setStrokeStyle(3, 0xffffff, 0.82),
-      this.add.triangle(0, -3, 0, 11, 18, 11, 9, -9, 0xffec9f, 1),
-      this.add.rectangle(0, 11, 20, 4, 0xffec9f, 1)
-    ]);
-    this.tweens.add({
-      targets: cue,
-      y: y - 8,
-      alpha: { from: 0.78, to: 1 },
-      duration: 620,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
+      this.powerBadges.push({ definition: badgeDefinition, power, sprite, ring, collected: false });
     });
   }
 
@@ -929,7 +837,6 @@ export class PlayScene extends Phaser.Scene {
       this.onGround = false;
       this.currentSurfaceY = jumpSurfaceY;
       this.setCatPose('catJump');
-      this.showActionFeedback('Jump!', 0x27b6a5);
     }
   }
 
@@ -947,7 +854,6 @@ export class PlayScene extends Phaser.Scene {
     this.lastSlideAt = this.elapsedMs;
     this.resolveNearbyObstaclesForAction('slide');
     this.collectNearbyThrustersForAction('slide');
-    this.showActionFeedback('Crawl!', 0xf05f73);
 
     if (this.sliding) {
       this.cat.x = Phaser.Math.Clamp(this.cat.x + 12, this.startX, this.worldWidth - 40);
@@ -971,7 +877,7 @@ export class PlayScene extends Phaser.Scene {
 
     this.startRunClock();
     if (!this.powerReady || !this.heldPower) {
-      this.showActionFeedback('Find a skill', 0xffd23f);
+      this.pulsePowerHud();
       return;
     }
 
@@ -987,7 +893,6 @@ export class PlayScene extends Phaser.Scene {
     this.setPowerIconSize();
     this.powerText?.setText(this.powerStatusText('active', power));
     this.updatePowerAvailabilityVisual();
-    this.showActionFeedback(`${this.powerLabel(power)}!`, 0xffd23f);
 
     switch (power) {
       case 'rook':
@@ -995,10 +900,12 @@ export class PlayScene extends Phaser.Scene {
         this.flashCat(0xffd23f);
         break;
       case 'knight':
-        this.currentSurfaceY = this.catSurfaceY();
-        this.verticalVelocity = CAT_POWER_JUMP_VELOCITY;
-        this.onGround = false;
-        this.climbing = false;
+        if (!this.launchKnightToNextPlatform()) {
+          this.currentSurfaceY = this.catSurfaceY();
+          this.verticalVelocity = CAT_POWER_JUMP_VELOCITY;
+          this.onGround = false;
+          this.climbing = false;
+        }
         this.flashCat(0x27b6a5);
         break;
       case 'bishop':
@@ -1026,6 +933,49 @@ export class PlayScene extends Phaser.Scene {
       this.powerText?.setText(this.powerStatusText('empty'));
       this.updatePowerAvailabilityVisual();
     });
+  }
+
+  private launchKnightToNextPlatform(): boolean {
+    const catSurfaceY = this.catSurfaceY();
+    const targetPlatform = this.level.platforms
+      .filter((platform) => platform.y < catSurfaceY - 90)
+      .sort((a, b) => b.y - a.y)[0];
+
+    if (!targetPlatform) {
+      return false;
+    }
+
+    const minX = targetPlatform.x - targetPlatform.width / 2 + 76;
+    const maxX = targetPlatform.x + targetPlatform.width / 2 - 76;
+    const targetX = Phaser.Math.Clamp(this.cat.x + KNIGHT_PLATFORM_X_OFFSET, minX, maxX);
+    const targetY = targetPlatform.y - this.catFootOffset();
+
+    this.powerTraveling = true;
+    this.climbing = false;
+    this.sliding = false;
+    this.onGround = false;
+    this.verticalVelocity = 0;
+    this.setCatPose('catJumpFrame1');
+
+    this.tweens.killTweensOf(this.cat);
+    this.tweens.add({
+      targets: this.cat,
+      x: targetX,
+      y: targetY,
+      duration: KNIGHT_TRAVEL_MS,
+      ease: 'Cubic.easeOut',
+      onComplete: () => {
+        this.currentSurfaceY = targetPlatform.y;
+        this.cat.y = targetY;
+        this.onGround = true;
+        this.verticalVelocity = 0;
+        this.powerTraveling = false;
+        this.restoreMovementCatPose();
+        this.collectNearbyThrustersForAction('power');
+      }
+    });
+
+    return true;
   }
 
   private checkPowerBadgeOverlaps(): void {
@@ -1061,9 +1011,9 @@ export class PlayScene extends Phaser.Scene {
       0xffd23f
     );
 
-    this.tweens.killTweensOf([badge.sprite, badge.ring, badge.cue]);
+    this.tweens.killTweensOf([badge.sprite, badge.ring]);
     this.tweens.add({
-      targets: [badge.sprite, badge.ring, badge.cue],
+      targets: [badge.sprite, badge.ring],
       alpha: 0,
       scale: 1.35,
       duration: 260,
@@ -1071,7 +1021,6 @@ export class PlayScene extends Phaser.Scene {
       onComplete: () => {
         badge.sprite.destroy();
         badge.ring.destroy();
-        badge.cue.destroy();
       }
     });
   }
@@ -1169,9 +1118,18 @@ export class PlayScene extends Phaser.Scene {
     const actionScore = this.currentScore();
     const station = this.buildEndBakeOffStation();
     const eventKey = `end-bake-off-${this.level.id}-${Date.now()}`;
+    this.scene.stop('BakingMiniGameScene');
     const bakingScene = this.scene.get('BakingMiniGameScene');
     let settled = false;
+    let safetyTimer: number | undefined;
     let onResult: (result: unknown) => void;
+
+    const clearSafetyTimer = (): void => {
+      if (safetyTimer !== undefined) {
+        window.clearTimeout(safetyTimer);
+        safetyTimer = undefined;
+      }
+    };
 
     const fallbackResult = (): void => {
       this.finishLevelWithBakeOff({
@@ -1189,7 +1147,9 @@ export class PlayScene extends Phaser.Scene {
       }
 
       settled = true;
+      clearSafetyTimer();
       this.game.events.off(eventKey, onResult);
+      bakingScene.events.off(Phaser.Scenes.Events.SHUTDOWN, recoverWithoutResult);
       this.activeBakingStation = false;
       fallbackResult();
     };
@@ -1205,6 +1165,7 @@ export class PlayScene extends Phaser.Scene {
       }
 
       settled = true;
+      clearSafetyTimer();
       bakingScene.events.off(Phaser.Scenes.Events.SHUTDOWN, recoverWithoutResult);
       this.activeBakingStation = false;
       this.finishLevelWithBakeOff(result);
@@ -1214,7 +1175,6 @@ export class PlayScene extends Phaser.Scene {
     bakingScene.events.once(Phaser.Scenes.Events.SHUTDOWN, recoverWithoutResult);
 
     try {
-      this.scene.pause();
       this.scene.launch('BakingMiniGameScene', {
         station,
         eventKey,
@@ -1222,6 +1182,8 @@ export class PlayScene extends Phaser.Scene {
         actionScore,
         levelTitle: this.level.title
       });
+      this.scene.pause('PlayScene');
+      safetyTimer = window.setTimeout(recoverWithoutResult, 90000);
     } catch {
       recoverWithoutResult();
     }
@@ -1263,8 +1225,10 @@ export class PlayScene extends Phaser.Scene {
 
     const summaries = (this.registry.get('scoreSummaries') ?? []) as ScoreSummary[];
     this.registry.set('scoreSummaries', replaceScoreSummary(summaries, summary));
-    this.scene.resume('PlayScene');
+    this.activeBakingStation = false;
+    this.completed = true;
     this.scene.stop('BakingMiniGameScene');
+    this.scene.resume('PlayScene');
     this.scene.start('ResultsScene', { levelIndex: this.level.index, summary });
   }
 
@@ -1314,6 +1278,10 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private applyHorizontalMovement(delta: number): void {
+    if (this.powerTraveling) {
+      return;
+    }
+
     if (this.climbing) {
       return;
     }
@@ -1528,9 +1496,7 @@ export class PlayScene extends Phaser.Scene {
       'Pastry!'
     );
 
-    const fadeTargets = [thruster.ring, thruster.core, ...thruster.sprinkles, thruster.valueText, thruster.cue].filter(
-      Boolean
-    );
+    const fadeTargets = [thruster.ring, thruster.core, ...thruster.sprinkles];
     this.tweens.killTweensOf(fadeTargets);
     this.tweens.add({
       targets: fadeTargets,
@@ -1542,8 +1508,6 @@ export class PlayScene extends Phaser.Scene {
         thruster.ring.destroy();
         thruster.core.destroy();
         thruster.sprinkles.forEach((sprinkle) => sprinkle.destroy());
-        thruster.valueText.destroy();
-        thruster.cue?.destroy();
       }
     });
   }
@@ -1565,47 +1529,14 @@ export class PlayScene extends Phaser.Scene {
   private thrusterRadius(thruster: PointThrusterDefinition): number {
     switch (thruster.kind) {
       case 'risky':
-        return 44;
+        return 34;
       case 'multiplier':
-        return 48;
+        return 38;
       case 'medium':
-        return 40;
+        return 30;
       case 'small':
       case undefined:
-        return 36;
-    }
-  }
-
-  private obstacleCueY(y: number, sprite: Phaser.GameObjects.Image): number {
-    const preferredY = y - sprite.displayHeight / 2 - 38;
-    if (preferredY < 114) {
-      return y + sprite.displayHeight / 2 + 28;
-    }
-
-    return preferredY;
-  }
-
-  private actionForObstacle(kind: ObstacleDefinition['kind']): ActionType {
-    switch (kind) {
-      case 'lowBarrier':
-      case 'swing':
-        return 'slide';
-      case 'cakeWall':
-        return 'power';
-      case 'hurdle':
-      case 'frostingPit':
-        return 'jump';
-    }
-  }
-
-  private actionColor(action: ActionType): number {
-    switch (action) {
-      case 'jump':
-        return 0x27b6a5;
-      case 'slide':
-        return 0xf05f73;
-      case 'power':
-        return 0xffd23f;
+        return 28;
     }
   }
 
@@ -1638,10 +1569,6 @@ export class PlayScene extends Phaser.Scene {
     });
   }
 
-  private showActionFeedback(message: string, color: number): void {
-    this.showScorePopup(this.cat.x, this.cat.y - 110, message, color);
-  }
-
   private showScorePopup(x: number, y: number, message: string, color: number): void {
     const feedback = this.add
       .text(x, y, message, {
@@ -1666,6 +1593,10 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private applyClimbMovement(delta: number): void {
+    if (this.powerTraveling) {
+      return;
+    }
+
     const direction = this.getClimbDirection();
 
     if (!this.climbing && direction !== 0 && this.canUseLadder()) {
@@ -1720,7 +1651,7 @@ export class PlayScene extends Phaser.Scene {
     return Boolean(this.nearestLadder());
   }
 
-  private startClimb(direction: -1 | 1): void {
+  private startClimb(_direction: -1 | 1): void {
     const ladder = this.nearestLadder();
     if (!ladder || !this.runStarted) {
       return;
@@ -1732,7 +1663,6 @@ export class PlayScene extends Phaser.Scene {
     this.verticalVelocity = 0;
     this.cat.x = Phaser.Math.Linear(this.cat.x, ladder.x, 0.45);
     this.setCatPose('catJump');
-    this.showActionFeedback(direction < 0 ? 'Climb!' : 'Down!', 0xffd23f);
   }
 
   private lockLadderGrab(): void {
@@ -1763,6 +1693,10 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private applyManualGravity(delta: number): void {
+    if (this.powerTraveling) {
+      return;
+    }
+
     if (this.climbing) {
       return;
     }
@@ -1988,19 +1922,6 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
-  private shortPowerLabel(power: PowerupType): string {
-    switch (power) {
-      case 'rook':
-        return 'Rook';
-      case 'knight':
-        return 'Knight';
-      case 'bishop':
-        return 'Bishop';
-      case 'queen':
-        return 'Queen';
-    }
-  }
-
   private powerStatusText(state: 'ready' | 'active' | 'empty', power = this.currentPowerup()): string {
     switch (state) {
       case 'active':
@@ -2051,7 +1972,6 @@ export class PlayScene extends Phaser.Scene {
 
       obstacle.sprite.y = obstacle.baseY + Math.sin(time / 380 + obstacle.phase) * 16;
       obstacle.sprite.angle = Math.sin(time / 430 + obstacle.phase) * 7;
-      obstacle.cue.y = this.obstacleCueY(obstacle.sprite.y, obstacle.sprite);
     }
   }
 

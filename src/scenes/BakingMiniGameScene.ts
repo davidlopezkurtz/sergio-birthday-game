@@ -441,8 +441,8 @@ export class BakingMiniGameScene extends Phaser.Scene {
     this.multiplierText = this.add
       .text(988, 321, 'x2.0\nClean tickets\nGreen serves', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '17px',
-        color: '#ffffff',
+        fontSize: '16px',
+        color: '#102033',
         fontStyle: '900',
         align: 'center',
         lineSpacing: 2,
@@ -450,6 +450,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(5);
+    this.multiplierText.setStroke('#fff4c7', 4);
     this.updateTimer();
   }
 
@@ -771,7 +772,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
 
     this.ticketTitleText?.setText('Multiplier Math');
     this.ticketProgressText?.setText('Final judge question');
-    this.ticketRecipeText?.setText(`${this.order.treatCount} treats x ${this.order.perTreat} topping moves each`);
+    this.ticketRecipeText?.setText(`Batch goal:\n${this.order.treatCount} treats x ${this.order.perTreat} toppings`);
     this.promptBack?.setPosition(PROMPT_CENTER_X, PROMPT_MATH_Y).setDisplaySize(760, 76).setDepth(23);
     this.promptText?.setPosition(PROMPT_CENTER_X, PROMPT_MATH_Y).setDepth(24);
     this.promptText?.setText(this.order.mathPrompt);
@@ -893,14 +894,14 @@ export class BakingMiniGameScene extends Phaser.Scene {
     this.locked = true;
     const result = buildBakeRushResult(this.recipeMistakes, this.mathCorrect, this.timeExpired, this.serveMistakes);
     const bonus = Math.max(0, Math.round(this.actionScore * (result.multiplier - 1)));
-    const badgeColor = result.perfect ? '#38a16d' : result.multiplier >= 1.5 ? '#ff9ec7' : '#f05f73';
     const badgeKey = this.multiplierBadgeKey(result.multiplier);
     const badge = this.addBakeoffImage(badgeKey, 988, 320, 12);
     badge?.setDisplaySize(176, 112);
     this.playBakeoffSound('sfx-multiplier-reveal');
 
     this.multiplierText?.setText(`Multiplier x${result.multiplier.toFixed(1)}\nBonus +${bonus.toLocaleString('en-US')}`);
-    this.multiplierText?.setColor(badgeColor);
+    this.multiplierText?.setColor('#102033');
+    this.multiplierText?.setStroke('#fff4c7', 4);
     this.multiplierText?.setDepth(13);
     this.updateStatusText(result);
     this.launchFinishAnimation(result);
@@ -1132,10 +1133,13 @@ export class BakingMiniGameScene extends Phaser.Scene {
   }
 
   private popIn(gameObject: Phaser.GameObjects.Shape | Phaser.GameObjects.Image): void {
-    gameObject.setScale(0.35);
+    const targetScaleX = gameObject.scaleX;
+    const targetScaleY = gameObject.scaleY;
+    gameObject.setScale(targetScaleX * 0.35, targetScaleY * 0.35);
     this.tweens.add({
       targets: gameObject,
-      scale: 1,
+      scaleX: targetScaleX,
+      scaleY: targetScaleY,
       duration: 180,
       ease: 'Back.easeOut'
     });

@@ -37,7 +37,7 @@ export const buildBakeRushOrder = (station: BakingStationDefinition, stationNumb
     treatCount,
     perTreat,
     mathIngredient,
-    mathPrompt: `${treatCount} birthday treats need ${perTreat} topping moves each. How many total topping moves?`,
+    mathPrompt: `Each treat needs ${perTreat} topping moves. ${treatCount} treats need how many moves?`,
     answer,
     choices: buildBakeRushChoices(answer, [answer - treatCount, answer + treatCount, answer + perTreat, answer - perTreat])
   };
