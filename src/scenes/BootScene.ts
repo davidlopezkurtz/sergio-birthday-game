@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import { assetsByKey, resolveAssetUrl, type AssetKey } from '../assets/assetManifest';
+import { assetsByKey, resolveAssetUrl, titleAssetKeys, type AssetKey } from '../assets/assetManifest';
 
-const TITLE_ASSET_KEYS: AssetKey[] = ['cat'];
+const TITLE_ASSET_KEYS: AssetKey[] = ['cat', ...titleAssetKeys];
 
 export class BootScene extends Phaser.Scene {
   constructor() {

@@ -100,6 +100,7 @@ const imageUrls = import.meta.glob(
     './images/sprinkle-burst*.png',
     './images/station*.png',
     './images/ticket-*.png',
+    './images/title*.png',
     './images/tray-arrive*.png',
     './images/treat*.png'
   ],
@@ -260,6 +261,28 @@ export const bakeoffAudioKeys = [
 
 export type BakeoffAudioKey = (typeof bakeoffAudioKeys)[number];
 
+export const titleAssetKeys = [
+  'title-bg',
+  'title-logo-panel',
+  'title-start-button',
+  'title-start-button-pressed',
+  'title-start-button-glow',
+  'title-cat-idle-1',
+  'title-cat-idle-2',
+  'title-cat-idle-3',
+  'title-cat-ready',
+  'title-confetti-1',
+  'title-confetti-2',
+  'title-spotlight-left',
+  'title-spotlight-right',
+  'title-floating-pastry-1',
+  'title-floating-pastry-2',
+  'title-floating-pastry-3',
+  'title-floating-pastry-4'
+] as const;
+
+export type TitleAssetKey = (typeof titleAssetKeys)[number];
+
 export type AssetKey =
   | 'cat'
   | 'catRun1'
@@ -305,6 +328,7 @@ export type AssetKey =
   | 'platform-yarn'
   | 'platform-bakery'
   | 'platform-tower'
+  | TitleAssetKey
   | BakeoffAssetKey;
 
 export interface AssetManifestEntry {
@@ -312,7 +336,7 @@ export interface AssetManifestEntry {
   description: string;
   width: number;
   height: number;
-  kind: 'Hero' | 'Obstacle' | 'Power' | 'Score' | 'Background' | 'Platform' | 'BakeOff';
+  kind: 'Hero' | 'Obstacle' | 'Power' | 'Score' | 'Background' | 'Platform' | 'BakeOff' | 'Title';
   url?: string;
   highDpiUrl?: string;
 }
@@ -463,6 +487,47 @@ const bakeoffAssetManifest: AssetManifestEntry[] = bakeoffAssetKeys.map((key) =>
     width: size.width,
     height: size.height,
     kind: 'BakeOff',
+    url: imageAssetUrl(key),
+    highDpiUrl: imageAssetUrl(`${key}-2x`)
+  };
+});
+
+const titleAssetSize = (key: TitleAssetKey): { width: number; height: number } => {
+  if (key === 'title-bg') {
+    return { width: 1280, height: 720 };
+  }
+
+  if (key === 'title-logo-panel') {
+    return { width: 760, height: 220 };
+  }
+
+  if (key.startsWith('title-start-button')) {
+    return { width: 430, height: 130 };
+  }
+
+  if (key.startsWith('title-cat')) {
+    return { width: 300, height: 220 };
+  }
+
+  if (key.startsWith('title-spotlight')) {
+    return { width: 260, height: 360 };
+  }
+
+  if (key.startsWith('title-floating-pastry')) {
+    return { width: 120, height: 120 };
+  }
+
+  return { width: 256, height: 256 };
+};
+
+const titleAssetManifest: AssetManifestEntry[] = titleAssetKeys.map((key) => {
+  const size = titleAssetSize(key);
+  return {
+    key,
+    description: `Title screen asset: ${key}`,
+    width: size.width,
+    height: size.height,
+    kind: 'Title',
     url: imageAssetUrl(key),
     highDpiUrl: imageAssetUrl(`${key}-2x`)
   };
@@ -865,6 +930,7 @@ export const assetManifest: AssetManifestEntry[] = [
     url: platformTowerUrl,
     highDpiUrl: platformTowerHighDpiUrl
   },
+  ...titleAssetManifest,
   ...bakeoffAssetManifest
 ];
 

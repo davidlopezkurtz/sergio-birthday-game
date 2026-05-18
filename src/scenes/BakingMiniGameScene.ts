@@ -234,32 +234,33 @@ export class BakingMiniGameScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('rgba(16, 32, 51, 0.74)');
     const background = this.addBakeoffImage(this.bakeoffBackgroundKey(), 640, 360, 0);
     if (background) {
-      background.setDisplaySize(1280, 720);
+      background.setDisplaySize(1280, 720).setAlpha(0.45);
     } else {
       this.add.rectangle(640, 360, 1280, 720, 0x102033, 0.76);
     }
 
-    this.add.rectangle(640, 360, 1280, 720, 0x102033, 0.2);
-    this.addBakeoffImage('audience-silhouette', 640, 604, 1)?.setDisplaySize(760, 190).setAlpha(0.45);
-    this.addBakeoffImage('bakeoff-spotlight', 164, 154, 1)?.setDisplaySize(150, 150).setAlpha(0.58);
-    this.addBakeoffImage('bakeoff-spotlight', 1116, 154, 1)?.setDisplaySize(150, 150).setAlpha(0.58).setFlipX(true);
+    this.add.rectangle(640, 360, 1280, 720, 0x102033, 0.42);
+    this.addBakeoffImage('audience-silhouette', 640, 664, 1)?.setDisplaySize(680, 142).setAlpha(0.18);
+    this.addBakeoffImage('bakeoff-spotlight', 164, 136, 1)?.setDisplaySize(122, 122).setAlpha(0.2);
+    this.addBakeoffImage('bakeoff-spotlight', 1116, 136, 1)?.setDisplaySize(122, 122).setAlpha(0.2).setFlipX(true);
 
-    this.add.rectangle(640, 360, 1140, 642, 0xfffcf1, 0.84).setStrokeStyle(8, 0xffd23f);
-    this.add.rectangle(640, 82, 1060, 76, 0x6b4a8c, 0.96).setStrokeStyle(4, 0x102033);
+    this.add.rectangle(640, 374, 1160, 610, 0xfffcf1, 0.9).setStrokeStyle(6, 0xffd23f);
+    this.add.rectangle(640, 54, 1080, 58, 0x6b4a8c, 0.96).setStrokeStyle(4, 0x102033);
+    this.add.rectangle(640, 621, 1080, 122, 0x102033, 0.09).setStrokeStyle(3, 0x102033, 0.16);
 
     this.add
-      .text(640, 60, 'Judge Order Bake Rush', {
+      .text(640, 39, 'Judge Order Bake Rush', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '34px',
+        fontSize: '29px',
         color: '#ffffff',
         fontStyle: '900'
       })
       .setOrigin(0.5);
 
     this.add
-      .text(640, 102, levelTitle, {
+      .text(640, 72, levelTitle, {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '22px',
+        fontSize: '17px',
         color: '#ffec9f',
         fontStyle: '900',
         align: 'center',
@@ -268,119 +269,119 @@ export class BakingMiniGameScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.feedbackText = this.add
-      .text(640, 648, 'Match each judge ticket, then nail the serve timing for a better multiplier.', {
+      .text(640, 530, 'Match the ticket, then serve on green.', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '20px',
+        fontSize: '19px',
         color: '#2f4056',
         fontStyle: '900',
         align: 'center',
-        wordWrap: { width: 940 }
+        wordWrap: { width: 760 }
       })
       .setOrigin(0.5);
 
     this.statusText = this.add
-      .text(640, 682, '', {
+      .text(640, 558, '', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '17px',
+        fontSize: '15px',
         color: '#6b4a8c',
         fontStyle: '900',
         align: 'center',
-        wordWrap: { width: 940 }
+        wordWrap: { width: 760 }
       })
       .setOrigin(0.5);
   }
 
   private createTicketPanel(): void {
-    this.addBakeoffImage('ticket-stack', 214, 252, 2)?.setDisplaySize(164, 114).setAlpha(0.96);
-    const ticket = this.addBakeoffImage('judge-ticket', 306, 290, 2);
+    this.addBakeoffImage('ticket-stack', 206, 208, 2)?.setDisplaySize(134, 92).setAlpha(0.8);
+    const ticket = this.addBakeoffImage('judge-ticket', 300, 236, 2);
     if (ticket) {
-      ticket.setDisplaySize(416, 208);
+      ticket.setDisplaySize(364, 182);
     } else {
-      this.add.rectangle(306, 290, 416, 306, 0xffffff, 1).setStrokeStyle(6, 0x102033);
+      this.add.rectangle(300, 236, 364, 182, 0xffffff, 1).setStrokeStyle(6, 0x102033);
     }
-    this.addBakeoffImage('ticket-next-tab', 483, 205, 3)?.setDisplaySize(92, 55);
-    this.addBakeoffImage('ticket-priority-star', 150, 164, 3)?.setDisplaySize(54, 54);
+    this.addBakeoffImage('ticket-next-tab', 458, 154, 3)?.setDisplaySize(78, 46);
+    this.addBakeoffImage('ticket-priority-star', 152, 137, 3)?.setDisplaySize(44, 44);
     this.ticketTitleText = this.add
-      .text(306, 164, '', {
+      .text(300, 137, '', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '25px',
+        fontSize: '22px',
         color: '#102033',
         fontStyle: '900',
         align: 'center'
       })
       .setOrigin(0.5);
     this.ticketProgressText = this.add
-      .text(306, 199, '', {
+      .text(300, 166, '', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '18px',
+        fontSize: '16px',
         color: '#6b4a8c',
         fontStyle: '900',
         align: 'center'
       })
       .setOrigin(0.5);
     this.ticketRecipeText = this.add
-      .text(306, 382, '', {
+      .text(300, 312, '', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '17px',
+        fontSize: '15px',
         color: '#2f4056',
         fontStyle: '800',
         align: 'center',
-        wordWrap: { width: 342 }
+        wordWrap: { width: 304 }
       })
       .setOrigin(0.5);
   }
 
   private createBakeStage(): void {
-    this.add.rectangle(640, 308, 506, 306, 0xd56b6b, 0.42).setStrokeStyle(5, 0x102033);
-    this.addBakeoffImage('bakeoff-conveyor', 640, 326, 2)?.setDisplaySize(572, 124);
+    this.add.rectangle(640, 330, 506, 278, 0xd56b6b, 0.32).setStrokeStyle(4, 0x102033, 0.72);
+    this.addBakeoffImage('bakeoff-conveyor', 640, 318, 2)?.setDisplaySize(528, 110);
 
     for (let index = 0; index < 9; index += 1) {
-      this.conveyorStripes.push(this.add.rectangle(410 + index * 62, 314, 28, 54, 0xfff4c7, 0.18).setDepth(3));
+      this.conveyorStripes.push(this.add.rectangle(410 + index * 62, 308, 24, 46, 0xfff4c7, 0.16).setDepth(3));
     }
 
-    this.addBakeoffImage('judge-rack', 640, 232, 4)?.setDisplaySize(340, 208);
+    this.addBakeoffImage('judge-rack', 640, 218, 4)?.setDisplaySize(274, 166);
     this.add
-      .text(640, 188, 'Judge Rack', {
+      .text(640, 180, 'Judge Rack', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '17px',
+        fontSize: '15px',
         color: '#102033',
         fontStyle: '900'
       })
       .setOrigin(0.5);
 
-    this.addBakeoffImage('bakeoff-counter', 640, 396, 2)?.setDisplaySize(640, 138);
-    this.addBakeoffImage('bakeoff-tray-empty', 640, 386, 4)?.setDisplaySize(360, 180);
+    this.addBakeoffImage('bakeoff-counter', 640, 390, 2)?.setDisplaySize(560, 120);
+    this.addBakeoffImage('bakeoff-tray-empty', 640, 378, 4)?.setDisplaySize(318, 158);
     this.add
-      .text(640, 344, 'Prep Tray', {
+      .text(640, 335, 'Prep Tray', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '17px',
+        fontSize: '15px',
         color: '#102033',
         fontStyle: '900'
       })
       .setOrigin(0.5);
 
     this.promptText = this.add
-      .text(640, 470, '', {
+      .text(640, 462, '', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '23px',
+        fontSize: '21px',
         color: '#102033',
         fontStyle: '900',
         align: 'center',
-        wordWrap: { width: 620 }
+        wordWrap: { width: 650 }
       })
       .setOrigin(0.5);
 
-    this.serveMeterTrack = this.addBakeoffImage('serve-meter-track', 640, 514, 5) ??
-      this.add.rectangle(640, 514, 240, 18, 0x102033, 0.24).setStrokeStyle(3, 0x102033, 0.45);
-    this.serveMeterTrack.setDisplaySize(260, 52);
-    this.serveSweetZone = this.addBakeoffImage('serve-meter-sweet-zone', 640, 514, 6) ??
-      this.add.rectangle(640, 514, SERVE_SWEET_RIGHT - SERVE_SWEET_LEFT, 26, 0x38a16d, 0.95);
-    this.serveSweetZone.setDisplaySize(72, 52);
-    this.serveMarker = this.addBakeoffImage('serve-meter-marker', this.serveMarkerX, 514, 7) ??
-      this.add.rectangle(this.serveMarkerX, 514, 14, 40, 0xffd23f, 1).setStrokeStyle(2, 0x102033);
-    this.serveMarker.setDisplaySize(30, 66);
+    this.serveMeterTrack = this.addBakeoffImage('serve-meter-track', 640, 494, 5) ??
+      this.add.rectangle(640, 494, 240, 18, 0x102033, 0.24).setStrokeStyle(3, 0x102033, 0.45);
+    this.serveMeterTrack.setDisplaySize(244, 48);
+    this.serveSweetZone = this.addBakeoffImage('serve-meter-sweet-zone', 640, 494, 6) ??
+      this.add.rectangle(640, 494, SERVE_SWEET_RIGHT - SERVE_SWEET_LEFT, 26, 0x38a16d, 0.95);
+    this.serveSweetZone.setDisplaySize(68, 48);
+    this.serveMarker = this.addBakeoffImage('serve-meter-marker', this.serveMarkerX, 494, 7) ??
+      this.add.rectangle(this.serveMarkerX, 494, 14, 40, 0xffd23f, 1).setStrokeStyle(2, 0x102033);
+    this.serveMarker.setDisplaySize(26, 58);
     this.serveMeterText = this.add
-      .text(640, 540, 'Serve when the bell hits green', {
+      .text(640, 512, 'Serve on green', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '15px',
         color: '#102033',
@@ -391,12 +392,12 @@ export class BakingMiniGameScene extends Phaser.Scene {
   }
 
   private createScorePanel(): void {
-    this.add.rectangle(984, 290, 314, 306, 0x102033, 0.82).setStrokeStyle(5, 0xffd23f);
-    this.addBakeoffImage('bakeoff-score-badge', 984, 170, 3)?.setDisplaySize(214, 106);
+    this.add.rectangle(988, 238, 292, 224, 0x102033, 0.82).setStrokeStyle(4, 0xffd23f);
+    this.addBakeoffImage('bakeoff-score-badge', 988, 154, 3)?.setDisplaySize(190, 92);
     this.add
-      .text(984, 166, `Course score\n${this.actionScore.toLocaleString('en-US')}`, {
+      .text(988, 151, `Course\n${this.actionScore.toLocaleString('en-US')}`, {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '22px',
+        fontSize: '20px',
         color: '#ffffff',
         fontStyle: '900',
         align: 'center',
@@ -404,28 +405,28 @@ export class BakingMiniGameScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    this.addBakeoffImage('bakeoff-timer-badge', 984, 238, 3)?.setDisplaySize(248, 68);
-    this.add.rectangle(984, 238, 230, 26, 0xffffff, 0.18).setStrokeStyle(3, 0xffffff, 0.6);
-    this.timerFill = this.add.rectangle(871, 238, 226, 22, 0x27b6a5, 1).setOrigin(0, 0.5);
+    this.addBakeoffImage('bakeoff-timer-badge', 988, 217, 3)?.setDisplaySize(222, 60);
+    this.add.rectangle(988, 217, 204, 22, 0xffffff, 0.18).setStrokeStyle(2, 0xffffff, 0.6);
+    this.timerFill = this.add.rectangle(888, 217, 200, 18, 0x27b6a5, 1).setOrigin(0, 0.5);
     this.timerText = this.add
-      .text(984, 274, '', {
+      .text(988, 250, '', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '19px',
+        fontSize: '17px',
         color: '#ffec9f',
         fontStyle: '900'
       })
       .setOrigin(0.5);
 
-    this.addBakeoffImage('multiplier-badge-base', 984, 352, 3)?.setDisplaySize(198, 132);
+    this.addBakeoffImage('multiplier-badge-base', 988, 320, 3)?.setDisplaySize(176, 112);
     this.multiplierText = this.add
-      .text(984, 354, 'x2.0\nClean tickets\nand green serves', {
+      .text(988, 321, 'x2.0\nClean tickets\nGreen serves', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '19px',
+        fontSize: '17px',
         color: '#ffffff',
         fontStyle: '900',
         align: 'center',
         lineSpacing: 2,
-        wordWrap: { width: 164 }
+        wordWrap: { width: 150 }
       })
       .setOrigin(0.5);
     this.updateTimer();
@@ -433,41 +434,41 @@ export class BakingMiniGameScene extends Phaser.Scene {
 
   private createStationButtons(): void {
     const positions = [
-      { x: 180, y: 580 },
-      { x: 360, y: 580 },
-      { x: 540, y: 580 },
-      { x: 720, y: 580 },
-      { x: 900, y: 580 },
-      { x: 1080, y: 580 }
+      { x: 166, y: 634 },
+      { x: 356, y: 634 },
+      { x: 546, y: 634 },
+      { x: 736, y: 634 },
+      { x: 926, y: 634 },
+      { x: 1116, y: 634 }
     ];
 
     STATIONS.forEach((display, index) => {
       const container = this.add.container(positions[index].x, positions[index].y);
-      const glow = this.add.rectangle(0, 0, 170, 92, 0xffd23f, 0.2).setStrokeStyle(5, 0xffd23f).setVisible(false);
-      const glowImage = this.addBakeoffImage('station-current-glow', 0, 0, 0)?.setDisplaySize(160, 160).setVisible(false);
-      const ring = this.addBakeoffImage('station-next-ring', 0, 0, 0)?.setDisplaySize(156, 156).setVisible(false);
-      const frame = this.addBakeoffImage('station-button-frame', 0, 0, 0)?.setDisplaySize(170, 106);
+      const glow = this.add.rectangle(0, 0, 148, 78, 0xffd23f, 0.18).setStrokeStyle(4, 0xffd23f).setVisible(false);
+      const glowImage = this.addBakeoffImage('station-current-glow', 0, 0, 0)?.setDisplaySize(138, 138).setVisible(false);
+      const ring = this.addBakeoffImage('station-next-ring', 0, 0, 0)?.setDisplaySize(132, 132).setVisible(false);
+      const frame = this.addBakeoffImage('station-button-frame', 0, 0, 0)?.setDisplaySize(150, 92);
       const background = this.add
-        .rectangle(0, 0, 154, 78, display.color, frame ? 0.08 : 1)
-        .setStrokeStyle(frame ? 0 : 5, 0x102033)
+        .rectangle(0, 0, 132, 62, display.color, frame ? 0.08 : 1)
+        .setStrokeStyle(frame ? 0 : 4, 0x102033)
         .setInteractive({ useHandCursor: true });
       const numberText = this.add
-        .text(-58, -25, `${index + 1}`, {
+        .text(-50, -21, `${index + 1}`, {
           fontFamily: 'Arial, sans-serif',
-          fontSize: '17px',
+          fontSize: '15px',
           color: display.textColor,
           fontStyle: '900'
         })
         .setOrigin(0.5);
       const icon = this.drawStationIcon(display.step);
       const label = this.add
-        .text(24, 16, display.label, {
+        .text(20, 13, display.label, {
           fontFamily: 'Arial, sans-serif',
-          fontSize: display.label.length > 8 ? '17px' : '20px',
+          fontSize: display.label.length > 8 ? '14px' : '16px',
           color: display.textColor,
           fontStyle: '900',
           align: 'center',
-          wordWrap: { width: 96 }
+          wordWrap: { width: 82 }
         })
         .setOrigin(0.5);
 
@@ -504,11 +505,11 @@ export class BakingMiniGameScene extends Phaser.Scene {
   }
 
   private drawStationIcon(step: BakeRushStep): Phaser.GameObjects.Container {
-    const icon = this.add.container(-30, 5);
+    const icon = this.add.container(-27, 4);
     const assetKey = this.stationAssetKey(step);
     const sprite = this.addBakeoffImage(assetKey, 0, 0, 1);
     if (sprite) {
-      sprite.setDisplaySize(58, 58);
+      sprite.setDisplaySize(48, 48);
       icon.add(sprite);
       return icon;
     }
@@ -760,18 +761,18 @@ export class BakingMiniGameScene extends Phaser.Scene {
     this.mathVisualObjects.forEach((object) => object.destroy());
     this.mathVisualObjects = [];
 
-    const startX = 515;
-    const gap = 62;
-    const batchCard = this.addBakeoffImage('math-batch-card', 640, 372, 8)?.setDisplaySize(420, 180);
+    const startX = 518;
+    const gap = 60;
+    const batchCard = this.addBakeoffImage('math-batch-card', 640, 360, 8)?.setDisplaySize(402, 160);
     if (batchCard) {
       this.mathVisualObjects.push(batchCard);
     }
 
     for (let treat = 0; treat < this.order.treatCount; treat += 1) {
       const x = startX + treat * gap;
-      const card = this.addBakeoffImage('math-treat-count-card', x, 374, 9)?.setDisplaySize(56, 42);
-      const base = this.addBakeoffImage('treat-cupcake-base', x, 372, 10)?.setDisplaySize(42, 32) ??
-        this.add.rectangle(x, 368, 38, 22, 0xd56b6b, 1).setStrokeStyle(2, 0x8c5b2e).setDepth(9);
+      const card = this.addBakeoffImage('math-treat-count-card', x, 362, 9)?.setDisplaySize(54, 40);
+      const base = this.addBakeoffImage('treat-cupcake-base', x, 360, 10)?.setDisplaySize(40, 30) ??
+        this.add.rectangle(x, 356, 36, 20, 0xd56b6b, 1).setStrokeStyle(2, 0x8c5b2e).setDepth(9);
       if (card) {
         this.mathVisualObjects.push(card);
       }
@@ -779,8 +780,8 @@ export class BakingMiniGameScene extends Phaser.Scene {
 
       for (let dot = 0; dot < this.order.perTreat; dot += 1) {
         const dotX = x - 17 + dot * 11;
-        const topping = this.addBakeoffImage('math-topping-chip', dotX, 346, 11)?.setDisplaySize(16, 16) ??
-          this.add.circle(dotX, 346, 5, this.stationDisplay(this.order.recipe[dot]).color, 1).setDepth(10);
+        const topping = this.addBakeoffImage('math-topping-chip', dotX, 336, 11)?.setDisplaySize(15, 15) ??
+          this.add.circle(dotX, 336, 5, this.stationDisplay(this.order.recipe[dot]).color, 1).setDepth(10);
         this.mathVisualObjects.push(topping);
       }
     }
@@ -788,26 +789,26 @@ export class BakingMiniGameScene extends Phaser.Scene {
 
   private createAnswerButtons(): void {
     const positions = [
-      { x: 310, y: 580 },
-      { x: 530, y: 580 },
-      { x: 750, y: 580 },
-      { x: 970, y: 580 }
+      { x: 310, y: 632 },
+      { x: 530, y: 632 },
+      { x: 750, y: 632 },
+      { x: 970, y: 632 }
     ];
 
     Phaser.Utils.Array.Shuffle([...this.order.choices]).forEach((choice, index) => {
       const container = this.add.container(positions[index].x, positions[index].y);
-      const card = this.addBakeoffImage('answer-card', 0, 0, 0)?.setDisplaySize(188, 112);
+      const card = this.addBakeoffImage('answer-card', 0, 0, 0)?.setDisplaySize(178, 102);
       const background = this.add
-        .rectangle(0, 0, 188, 86, 0xffd23f)
+        .rectangle(0, 0, 178, 78, 0xffd23f)
         .setStrokeStyle(card ? 0 : 5, 0x102033)
         .setInteractive({ useHandCursor: true });
       if (card) {
         background.setAlpha(0.02);
       }
       const numberText = this.add
-        .text(-70, -30, `${index + 1}`, {
+        .text(-65, -28, `${index + 1}`, {
           fontFamily: 'Arial, sans-serif',
-          fontSize: '18px',
+          fontSize: '16px',
           color: '#102033',
           fontStyle: '900'
         })
@@ -815,7 +816,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
       const answerText = this.add
         .text(0, 4, choice.toString(), {
           fontFamily: 'Arial, sans-serif',
-          fontSize: '36px',
+          fontSize: '34px',
           color: '#102033',
           fontStyle: '900'
         })
@@ -976,10 +977,10 @@ export class BakingMiniGameScene extends Phaser.Scene {
     }
 
     if (expected === 'serve') {
-      this.promptText?.setText('Serve: hit the bell station while the marker crosses green.');
+      this.promptText?.setText('Serve: tap Bell on green.');
       this.setServeMeterActive(true);
     } else {
-      this.promptText?.setText(`Next station: ${this.stepLabel(expected)}.`);
+      this.promptText?.setText(`Tap ${this.stepLabel(expected)}.`);
       this.setServeMeterActive(false);
     }
   }
@@ -987,7 +988,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
   private updateTimer(): void {
     const ratio = Phaser.Math.Clamp(this.timeRemainingMs / BAKE_RUSH_TIME_LIMIT_MS, 0, 1);
     if (this.timerFill) {
-      this.timerFill.width = 226 * ratio;
+      this.timerFill.width = 200 * ratio;
       this.timerFill.setFillStyle(ratio > 0.35 ? 0x27b6a5 : 0xf05f73);
     }
 
@@ -1005,9 +1006,9 @@ export class BakingMiniGameScene extends Phaser.Scene {
     }
 
     const ticketsDone = Math.min(this.currentTicketIndex, this.order.tickets.length);
-    const timeCopy = this.timeExpired ? ' | time assist used' : '';
+    const timeCopy = this.timeExpired ? ' | time assist' : '';
     this.statusText?.setText(
-      `Tickets ${ticketsDone}/${this.order.tickets.length} | Prep misses ${this.recipeMistakes} | Serve misses ${this.serveMistakes}${timeCopy}`
+      `Tickets ${ticketsDone}/${this.order.tickets.length} | Misses ${this.recipeMistakes + this.serveMistakes}${timeCopy}`
     );
   }
 

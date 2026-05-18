@@ -46,8 +46,8 @@ interface PlatformObject {
 interface ThrusterObject {
   definition: PointThrusterDefinition;
   ring: Phaser.GameObjects.Arc;
-  core: Phaser.GameObjects.Arc;
-  sprinkles: Phaser.GameObjects.Arc[];
+  core: Phaser.GameObjects.Arc | Phaser.GameObjects.Image;
+  sprinkles: Array<Phaser.GameObjects.Arc | Phaser.GameObjects.Image>;
   valueText: Phaser.GameObjects.Text;
 }
 
@@ -71,6 +71,18 @@ const SLIDE_ACTION_GRACE_MS = 950;
 const POWER_ACTION_GRACE_MS = 1100;
 const ACTION_CLEAR_AHEAD = 100;
 const ACTION_CLEAR_BEHIND = 180;
+const HUD_HEIGHT = 62;
+const HUD_DEPTH = 20;
+const CONTROL_Y = 666;
+const CONTROL_ALPHA_TOUCH = 0.58;
+const CONTROL_ALPHA_DESKTOP = 0.2;
+const CONTROL_ALPHA_PRESSED = 0.88;
+const COURSE_BAND_ALPHA = 0.16;
+const PICKUP_ASSET_BY_ACTION: Record<ActionType, AssetKey> = {
+  jump: 'treat-cupcake-base',
+  slide: 'treat-donut-base',
+  power: 'treat-star-topper'
+};
 
 interface HitboxProfile {
   widthRatio: number;
@@ -292,7 +304,7 @@ export class PlayScene extends Phaser.Scene {
     this.createControls();
     this.startCountdown();
 
-    this.cameras.main.startFollow(this.cat, true, 0.14, 0.14, 0, 70);
+    this.cameras.main.startFollow(this.cat, true, 0.14, 0.14, 0, 30);
     this.cameras.main.setBounds(0, 0, this.worldWidth, this.worldHeight);
   }
 
@@ -340,21 +352,23 @@ export class PlayScene extends Phaser.Scene {
     );
     sky.fillRect(0, 0, this.worldWidth, this.worldHeight);
 
-    const backgroundKey = this.levelBackgroundAssetKey();
-    if (this.textures.exists(backgroundKey)) {
-      this.add
-        .image(640, 360, backgroundKey)
-        .setScrollFactor(0)
-        .setDisplaySize(1280, 720)
-        .setDepth(0);
-    } else {
-      for (let index = 0; index < 16; index += 1) {
-        const x = 240 + index * 380;
-        const y = 120 + (index % 8) * 90;
-        this.add.circle(x, y, 34, 0xffffff, 0.3);
-        this.add.circle(x + 42, y + 8, 26, 0xffffff, 0.25);
-        this.add.circle(x - 38, y + 12, 22, 0xffffff, 0.22);
-      }
+    const bandStops = [0, ...this.level.platforms.map((platform) => platform.y).sort((a, b) => a - b), this.groundY + 180];
+    for (let index = 0; index < bandStops.length - 1; index += 1) {
+      const top = bandStops[index];
+      const bottom = bandStops[index + 1];
+      const y = (top + bottom) / 2;
+      const height = bottom - top;
+      const color = index % 2 === 0 ? 0xffffff : this.level.palette.accent;
+      this.add.rectangle(640, y, this.worldWidth, height, color, index % 2 === 0 ? 0.08 : COURSE_BAND_ALPHA).setDepth(0);
+      this.add.rectangle(640, bottom - 6, this.worldWidth, 10, 0xffffff, 0.24).setDepth(0);
+    }
+
+    for (let index = 0; index < 12; index += 1) {
+      const x = 160 + (index % 4) * 330;
+      const y = 170 + Math.floor(index / 4) * 620;
+      this.add.circle(x, y, 34, 0xffffff, 0.22).setDepth(0);
+      this.add.circle(x + 42, y + 8, 26, 0xffffff, 0.16).setDepth(0);
+      this.add.circle(x - 38, y + 12, 22, 0xffffff, 0.14).setDepth(0);
     }
 
   }
@@ -445,18 +459,21 @@ export class PlayScene extends Phaser.Scene {
       const sprite = this.add.image(obstacle.x, y, assetKey);
       sprite.setDepth(4);
       this.setAssetDisplaySize(sprite, assetKey, this.getObstacleScale(obstacle.kind));
+      const cue = this.actionCueForObstacle(obstacle.kind);
+      const cueColor = this.actionCueColor(cue);
+      const labelY = this.obstacleLabelY(y, sprite);
 
       const label = this.add
-        .text(obstacle.x, y - sprite.displayHeight / 2 - 54, `${this.actionCueForObstacle(obstacle.kind)}: ${obstacle.label}`, {
+        .text(obstacle.x, labelY, cue, {
           fontFamily: 'Arial, sans-serif',
-          fontSize: '18px',
-          color: '#102033',
-          fontStyle: '800',
-          backgroundColor: 'rgba(255,255,255,0.72)',
-          padding: { x: 8, y: 4 }
+          fontSize: '22px',
+          color: '#ffffff',
+          fontStyle: '900',
+          backgroundColor: Phaser.Display.Color.IntegerToColor(cueColor).rgba,
+          padding: { x: 12, y: 5 }
         })
         .setOrigin(0.5)
-        .setDepth(3);
+        .setDepth(9);
 
       this.obstacles.push({ definition: obstacle, sprite, label, baseY: y, phase: obstacle.x / 180 });
     }
@@ -469,26 +486,24 @@ export class PlayScene extends Phaser.Scene {
       const color = this.thrusterColor(thruster);
       const radius = this.thrusterRadius(thruster);
       const ring = this.add
-        .circle(thruster.x, thruster.y + radius * 0.58, radius * 0.72, 0x102033, 0.16)
+        .circle(thruster.x, thruster.y + radius * 0.48, radius * 0.68, 0x102033, 0.14)
         .setDepth(6);
-      const core = this.add
-        .circle(thruster.x, thruster.y, radius * 0.62, 0xfff4c7, 0.98)
-        .setStrokeStyle(4, 0x8c5b2e, 0.84)
-        .setDepth(7);
-      const sprinkles = [
-        this.add.circle(thruster.x - radius * 0.3, thruster.y - radius * 0.02, radius * 0.18, color, 1).setDepth(8),
-        this.add.circle(thruster.x + radius * 0.25, thruster.y - radius * 0.16, radius * 0.13, 0xf05f73, 1).setDepth(8),
-        this.add.circle(thruster.x + radius * 0.08, thruster.y + radius * 0.18, radius * 0.12, 0x27b6a5, 1).setDepth(8),
-        this.add.circle(thruster.x - radius * 0.04, thruster.y, radius * 0.22, 0xffffff, 0.92).setDepth(8)
+      const pickupAssetKey = this.pickupAssetKey(thruster.requiredAction);
+      const core = this.textures.exists(pickupAssetKey)
+        ? this.add.image(thruster.x, thruster.y, pickupAssetKey).setDepth(7).setDisplaySize(radius * 1.6, radius * 1.35)
+        : this.add.circle(thruster.x, thruster.y, radius * 0.62, 0xfff4c7, 0.98).setStrokeStyle(4, 0x8c5b2e, 0.84).setDepth(7);
+      const sprinkles: Array<Phaser.GameObjects.Arc | Phaser.GameObjects.Image> = [
+        this.add.circle(thruster.x - radius * 0.48, thruster.y - radius * 0.28, radius * 0.12, color, 1).setDepth(8),
+        this.add.circle(thruster.x + radius * 0.5, thruster.y - radius * 0.22, radius * 0.1, 0xf05f73, 1).setDepth(8)
       ];
       const valueText = this.add
-        .text(thruster.x, thruster.y + radius + 24, `+${thruster.value}`, {
+        .text(thruster.x + radius * 0.82, thruster.y + radius * 0.5, `+${thruster.value}`, {
           fontFamily: 'Arial, sans-serif',
-          fontSize: thruster.value >= 500 ? '20px' : '18px',
+          fontSize: thruster.value >= 500 ? '18px' : '16px',
           color: '#ffffff',
           fontStyle: '900',
           backgroundColor: 'rgba(16,32,51,0.82)',
-          padding: { x: 7, y: 3 }
+          padding: { x: 6, y: 3 }
         })
         .setOrigin(0.5)
         .setDepth(8);
@@ -508,66 +523,66 @@ export class PlayScene extends Phaser.Scene {
 
   private createHud(): void {
     this.add
-      .rectangle(640, 42, 1280, 84, 0x102033, 0.82)
+      .rectangle(640, HUD_HEIGHT / 2, 1280, HUD_HEIGHT, 0x102033, 0.82)
       .setScrollFactor(0)
-      .setDepth(20);
+      .setDepth(HUD_DEPTH);
 
     this.timerText = this.add
-      .text(1110, 17, 'Time 0:00', {
+      .text(1120, 20, 'Time 0:00', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '20px',
+        fontSize: '18px',
         color: '#d8f7ff',
         fontStyle: '800'
       })
       .setScrollFactor(0)
-      .setDepth(21);
+      .setDepth(HUD_DEPTH + 1);
 
     this.scoreText = this.add
-      .text(28, 12, 'Score 0', {
+      .text(28, 13, 'Score 0', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '36px',
+        fontSize: '30px',
         color: '#ffec9f',
         fontStyle: '900'
       })
       .setScrollFactor(0)
-      .setDepth(21);
+      .setDepth(HUD_DEPTH + 1);
 
     this.comboText = this.add
-      .text(288, 19, 'Combo x0', {
+      .text(268, 19, 'Combo x0', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '26px',
+        fontSize: '22px',
         color: '#ffffff',
         fontStyle: '900'
       })
       .setScrollFactor(0)
-      .setDepth(21);
+      .setDepth(HUD_DEPTH + 1);
 
     this.powerIcon = this.add
-      .image(520, 42, this.currentPowerup())
+      .image(496, 31, this.currentPowerup())
       .setScrollFactor(0)
-      .setDepth(21);
-    this.setAssetDisplaySize(this.powerIcon, this.currentPowerup(), 0.38);
+      .setDepth(HUD_DEPTH + 1);
+    this.setAssetDisplaySize(this.powerIcon, this.currentPowerup(), 0.3);
 
     this.powerText = this.add
-      .text(565, 14, this.powerStatusText('ready'), {
+      .text(532, 18, this.powerStatusText('ready'), {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '18px',
+        fontSize: '16px',
         color: '#ffec9f',
         fontStyle: '900',
-        wordWrap: { width: 200 }
+        wordWrap: { width: 230 }
       })
       .setScrollFactor(0)
-      .setDepth(21);
+      .setDepth(HUD_DEPTH + 1);
 
     this.progressText = this.add
-      .text(785, 18, 'Pastries 0/0 | Hits 0', {
+      .text(790, 20, 'Treats 0/0  Hits 0', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '17px',
         color: '#ffffff',
         fontStyle: '800'
       })
       .setScrollFactor(0)
-      .setDepth(21);
+      .setDepth(HUD_DEPTH + 1);
 
   }
 
@@ -579,11 +594,13 @@ export class PlayScene extends Phaser.Scene {
     this.keyPower = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.keySlide = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.S);
 
-    this.createMoveButton(110, 642, 104, 'Back', 0x2f4056, -1);
-    this.createMoveButton(250, 642, 128, 'Run', 0x38a16d, 1);
-    this.createVerticalActionButton(840, 642, 108, 'Down', 0xf05f73, 1);
-    this.createVerticalActionButton(980, 642, 108, 'Jump', 0x27b6a5, -1);
-    this.createTouchButton(1130, 642, 108, 'Power', 0xffd23f, () => this.usePower(), '#102033');
+    this.add.rectangle(640, 672, 1280, 96, 0x102033, 0.12).setScrollFactor(0).setDepth(29);
+
+    this.createMoveButton(86, CONTROL_Y, 78, 'Back', 0x2f4056, -1);
+    this.createMoveButton(196, CONTROL_Y, 88, 'Run', 0x38a16d, 1);
+    this.createVerticalActionButton(888, CONTROL_Y, 82, 'Duck', 0xf05f73, 1);
+    this.createVerticalActionButton(998, CONTROL_Y, 88, 'Jump', 0x27b6a5, -1);
+    this.createTouchButton(1120, CONTROL_Y, 86, 'Power', 0xffd23f, () => this.usePower(), '#102033');
   }
 
   private createTouchButton(
@@ -596,13 +613,14 @@ export class PlayScene extends Phaser.Scene {
     textColor = '#ffffff'
   ): void {
     const container = this.add.container(x, y).setScrollFactor(0).setDepth(30);
+    const baseAlpha = this.touchControlAlpha();
     const circle = this.add
-      .circle(0, 0, size / 2, color, 0.92)
-      .setStrokeStyle(5, 0xffffff);
+      .circle(0, 0, size / 2, color, baseAlpha)
+      .setStrokeStyle(4, 0xffffff, 0.72);
     const text = this.add
       .text(0, 0, label, {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '22px',
+        fontSize: '17px',
         color: textColor,
         fontStyle: '900'
       })
@@ -610,7 +628,19 @@ export class PlayScene extends Phaser.Scene {
     const hitZone = this.add.zone(0, 0, size, size).setInteractive({ useHandCursor: true });
 
     container.add([circle, text, hitZone]);
-    hitZone.on('pointerdown', onPress);
+    hitZone.on('pointerdown', () => {
+      circle.setAlpha(CONTROL_ALPHA_PRESSED);
+      circle.setScale(1.06);
+      onPress();
+    });
+    hitZone.on('pointerup', () => {
+      circle.setAlpha(baseAlpha);
+      circle.setScale(1);
+    });
+    hitZone.on('pointerout', () => {
+      circle.setAlpha(baseAlpha);
+      circle.setScale(1);
+    });
   }
 
   private createVerticalActionButton(
@@ -622,13 +652,14 @@ export class PlayScene extends Phaser.Scene {
     direction: -1 | 1
   ): void {
     const container = this.add.container(x, y).setScrollFactor(0).setDepth(30);
+    const baseAlpha = this.touchControlAlpha();
     const circle = this.add
-      .circle(0, 0, size / 2, color, 0.92)
-      .setStrokeStyle(5, 0xffffff);
+      .circle(0, 0, size / 2, color, baseAlpha)
+      .setStrokeStyle(4, 0xffffff, 0.72);
     const text = this.add
       .text(0, 0, label, {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '22px',
+        fontSize: '17px',
         color: '#ffffff',
         fontStyle: '900'
       })
@@ -639,10 +670,13 @@ export class PlayScene extends Phaser.Scene {
       if (this.canUseLadder()) {
         this.touchClimbDirection = direction;
         this.startClimb(direction);
-        circle.setScale(1.07);
+        circle.setAlpha(CONTROL_ALPHA_PRESSED);
+        circle.setScale(1.06);
         return;
       }
 
+      circle.setAlpha(CONTROL_ALPHA_PRESSED);
+      circle.setScale(1.06);
       if (direction < 0) {
         this.jump();
       } else {
@@ -653,6 +687,7 @@ export class PlayScene extends Phaser.Scene {
       if (this.touchClimbDirection === direction) {
         this.touchClimbDirection = 0;
       }
+      circle.setAlpha(baseAlpha);
       circle.setScale(1);
     };
 
@@ -672,13 +707,14 @@ export class PlayScene extends Phaser.Scene {
     direction: -1 | 1
   ): void {
     const container = this.add.container(x, y).setScrollFactor(0).setDepth(30);
+    const baseAlpha = this.touchControlAlpha();
     const circle = this.add
-      .circle(0, 0, size / 2, color, 0.92)
-      .setStrokeStyle(5, 0xffffff);
+      .circle(0, 0, size / 2, color, baseAlpha)
+      .setStrokeStyle(4, 0xffffff, 0.72);
     const text = this.add
       .text(0, 0, label, {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '22px',
+        fontSize: '17px',
         color: '#ffffff',
         fontStyle: '900'
       })
@@ -687,14 +723,14 @@ export class PlayScene extends Phaser.Scene {
 
     const beginMove = () => {
       this.touchMoveDirection = direction;
-      circle.setAlpha(1);
-      circle.setScale(1.07);
+      circle.setAlpha(CONTROL_ALPHA_PRESSED);
+      circle.setScale(1.06);
     };
     const endMove = () => {
       if (this.touchMoveDirection === direction) {
         this.touchMoveDirection = 0;
       }
-      circle.setAlpha(0.92);
+      circle.setAlpha(baseAlpha);
       circle.setScale(1);
     };
 
@@ -1272,14 +1308,14 @@ export class PlayScene extends Phaser.Scene {
   private thrusterRadius(thruster: PointThrusterDefinition): number {
     switch (thruster.kind) {
       case 'risky':
-        return 52;
+        return 44;
       case 'multiplier':
-        return 56;
+        return 48;
       case 'medium':
-        return 46;
+        return 40;
       case 'small':
       case undefined:
-        return 40;
+        return 36;
     }
   }
 
@@ -1295,6 +1331,36 @@ export class PlayScene extends Phaser.Scene {
       case 'frostingPit':
         return 'Jump';
     }
+  }
+
+  private actionCueColor(cue: string): number {
+    switch (cue) {
+      case 'Crawl':
+      case 'Duck':
+        return 0xf05f73;
+      case 'Power':
+        return 0xffd23f;
+      case 'Jump':
+      default:
+        return 0x27b6a5;
+    }
+  }
+
+  private obstacleLabelY(y: number, sprite: Phaser.GameObjects.Image): number {
+    const preferredY = y - sprite.displayHeight / 2 - 38;
+    if (preferredY < 114) {
+      return y + sprite.displayHeight / 2 + 28;
+    }
+
+    return preferredY;
+  }
+
+  private pickupAssetKey(action: ActionType = 'jump'): AssetKey {
+    return PICKUP_ASSET_BY_ACTION[action] ?? 'treat-cupcake-base';
+  }
+
+  private touchControlAlpha(): number {
+    return this.sys.game.device.input.touch ? CONTROL_ALPHA_TOUCH : CONTROL_ALPHA_DESKTOP;
   }
 
   private showActionFeedback(message: string, color: number): void {
@@ -1596,7 +1662,7 @@ export class PlayScene extends Phaser.Scene {
     this.scoreText?.setText(`Score ${formatScore(this.currentScore())}`);
     this.comboText?.setText(`Combo x${this.combo}`);
     this.progressText?.setText(
-      `Pastries ${this.thrustersCollected.size}/${this.level.pointThrusters.length} | Hits ${this.obstacleHits}`
+      `Treats ${this.thrustersCollected.size}/${this.level.pointThrusters.length}  Hits ${this.obstacleHits}`
     );
   }
 
@@ -1650,11 +1716,11 @@ export class PlayScene extends Phaser.Scene {
   private powerStatusText(state: 'ready' | 'active' | 'charging', power = this.currentPowerup()): string {
     switch (state) {
       case 'active':
-        return `Chess badge: ${this.powerLabel(power)} active`;
+        return `${this.powerLabel(power)} active`;
       case 'charging':
-        return `Chess badge: ${this.powerLabel(power)} charging`;
+        return `${this.powerLabel(power)} charging`;
       case 'ready':
-        return `Chess badge: ${this.powerLabel(power)} ready\nPower / Space`;
+        return `${this.powerLabel(power)} ready | Space`;
     }
   }
 
@@ -1699,7 +1765,7 @@ export class PlayScene extends Phaser.Scene {
 
       obstacle.sprite.y = obstacle.baseY + Math.sin(time / 380 + obstacle.phase) * 16;
       obstacle.sprite.angle = Math.sin(time / 430 + obstacle.phase) * 7;
-      obstacle.label.y = obstacle.baseY - obstacle.sprite.displayHeight / 2 - 60;
+      obstacle.label.y = this.obstacleLabelY(obstacle.sprite.y, obstacle.sprite);
     }
   }
 
@@ -1741,24 +1807,15 @@ export class PlayScene extends Phaser.Scene {
       'bishop',
       'queen',
       'star',
-      this.levelBackgroundAssetKey(),
-      this.platformAssetKey()
+      this.platformAssetKey(),
+      'treat-cupcake-base',
+      'treat-donut-base',
+      'treat-star-topper'
     ]);
 
     this.level.obstacles.forEach((obstacle) => keys.add(this.obstacleAssetKey(obstacle.kind)));
 
     return [...keys];
-  }
-
-  private levelBackgroundAssetKey(): AssetKey {
-    switch (this.levelThemeKey()) {
-      case 'bakery':
-        return 'level-frosting-factory-bg';
-      case 'tower':
-        return 'level-birthday-beast-tower-bg';
-      case 'yarn':
-        return 'level-yarn-yard-bg';
-    }
   }
 
   private platformAssetKey(): AssetKey {
