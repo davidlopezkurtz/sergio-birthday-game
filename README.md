@@ -42,9 +42,19 @@ npm run preview
 
 ## Deployment
 
-The repository includes a GitHub Actions workflow at `.github/workflows/deploy.yml` that builds the static site and deploys `dist/` to GitHub Pages.
+The repository includes a GitHub Actions workflow at `.github/workflows/deploy.yml` that builds the static site and publishes `dist/` to the `gh-pages` branch.
 
 Vite is configured with relative asset paths so the game works from the `/sergio-birthday-game/` GitHub Pages subpath.
+
+First-time GitHub Pages setup:
+
+1. Open the repository on GitHub.
+2. Go to `Settings` > `Pages`.
+3. Set `Source` to `Deploy from a branch`.
+4. Set `Branch` to `gh-pages` and folder to `/ (root)`.
+5. Save.
+
+After that one-time setting, pushes to `main` will rebuild and update the live game.
 
 ## Art Pipeline
 
