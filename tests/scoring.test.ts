@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { levels } from '../src/data/levels';
-import { buildLevelCompletionSummary, fallbackBakeOffResult } from '../src/game/levelCompletion';
+import {
+  buildFallbackLevelCompletionSummary,
+  buildLevelCompletionSummary,
+  fallbackBakeOffResult,
+  upsertLevelCompletionSummary
+} from '../src/game/levelCompletion';
 import {
   buildScoreSummary,
   calculateAppliedPenalty,
@@ -190,31 +195,88 @@ describe('scoring', () => {
 
   it('keeps level results reachable if the bake-off scene has to recover', () => {
     const level = levels[1];
-    const summary = buildLevelCompletionSummary(
-      {
-        level,
-        activeElapsedMs: 61000,
-        hintsUsed: 0,
-        obstacleHits: 1,
-        obstacleClears: 3,
-        thrustersCollected: 4,
-        totalThrusters: level.pointThrusters.length,
-        maxCombo: 3,
-        obstaclePoints: 450,
-        thrusterPoints: 1000,
-        mathPoints: 0,
-        comboBonus: 200,
-        penaltyPoints: 100,
-        actionScore: 1550
-      },
-      fallbackBakeOffResult()
-    );
+    const fallbackResult = fallbackBakeOffResult();
+    const summary = buildFallbackLevelCompletionSummary({
+      level,
+      activeElapsedMs: 61000,
+      hintsUsed: 0,
+      obstacleHits: 1,
+      obstacleClears: 3,
+      thrustersCollected: 4,
+      totalThrusters: level.pointThrusters.length,
+      maxCombo: 3,
+      obstaclePoints: 450,
+      thrusterPoints: 1000,
+      mathPoints: 0,
+      comboBonus: 200,
+      penaltyPoints: 100,
+      actionScore: 1550
+    });
 
+    expect(fallbackResult.multiplier).toBe(1);
+    expect(summary.levelId).toBe(level.id);
     expect(summary.completed).toBe(true);
+    expect(summary.obstaclePoints).toBe(450);
+    expect(summary.thrusterPoints).toBe(1000);
+    expect(summary.obstacleHits).toBe(1);
     expect(summary.bakingPoints).toBe(0);
     expect(summary.bakingPerfect).toBe(0);
     expect(summary.bakingStationsCompleted).toBe(1);
+    expect(summary.totalBakingStations).toBe(1);
+    expect(summary.mathCorrect).toBe(0);
     expect(summary.mathAttempts).toBe(1);
+  });
+
+  it('upserts fallback bake-off summaries by level', () => {
+    const level = levels[1];
+    const oldSummary = buildLevelCompletionSummary(
+      {
+        level,
+        activeElapsedMs: 80000,
+        hintsUsed: 0,
+        obstacleHits: 2,
+        obstacleClears: 2,
+        thrustersCollected: 2,
+        totalThrusters: level.pointThrusters.length,
+        maxCombo: 2,
+        obstaclePoints: 200,
+        thrusterPoints: 500,
+        mathPoints: 0,
+        comboBonus: 0,
+        penaltyPoints: 100,
+        actionScore: 700
+      },
+      {
+        mistakes: 0,
+        perfect: true,
+        multiplier: 2,
+        mathCorrect: 1,
+        mathAttempts: 1
+      }
+    );
+    const fallbackSummary = buildFallbackLevelCompletionSummary({
+      level,
+      activeElapsedMs: 61000,
+      hintsUsed: 0,
+      obstacleHits: 1,
+      obstacleClears: 3,
+      thrustersCollected: 4,
+      totalThrusters: level.pointThrusters.length,
+      maxCombo: 3,
+      obstaclePoints: 450,
+      thrusterPoints: 1000,
+      mathPoints: 0,
+      comboBonus: 200,
+      penaltyPoints: 100,
+      actionScore: 1550
+    });
+
+    const summaries = upsertLevelCompletionSummary([oldSummary], fallbackSummary);
+
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0].levelId).toBe(level.id);
+    expect(summaries[0].bakingPoints).toBe(0);
+    expect(summaries[0].thrustersCollected).toBe(4);
   });
 
   it('formats time as minutes and padded seconds', () => {

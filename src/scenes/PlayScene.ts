@@ -1,7 +1,12 @@
 import Phaser from 'phaser';
 import { assetsByKey, resolveAssetUrl, type AssetKey } from '../assets/assetManifest';
 import { levels } from '../data/levels';
-import type { LevelCompletionSnapshot } from '../game/levelCompletion';
+import { BAKEOFF_READY_EVENT, BAKEOFF_STARTUP_TIMEOUT_MS, type BakeOffReadyPayload } from '../game/bakeOffTransition';
+import {
+  buildFallbackLevelCompletionSummary,
+  type LevelCompletionSnapshot,
+  upsertLevelCompletionSummary
+} from '../game/levelCompletion';
 import {
   OBSTACLE_CLEAR_POINTS,
   OBSTACLE_HIT_PENALTY_POINTS,
@@ -19,7 +24,8 @@ import type {
   ObstacleDefinition,
   PointThrusterDefinition,
   PowerBadgeDefinition,
-  PowerupType
+  PowerupType,
+  ScoreSummary
 } from '../types';
 
 interface PlaySceneData {
@@ -170,6 +176,9 @@ export class PlayScene extends Phaser.Scene {
   private powerButtonGlow?: Phaser.GameObjects.Arc;
   private controlDebugText?: Phaser.GameObjects.Text;
   private bakeOffLoadingText?: Phaser.GameObjects.Text;
+  private bakeOffStartupTimer?: Phaser.Time.TimerEvent;
+  private bakeOffReadyHandler?: (payload: BakeOffReadyPayload) => void;
+  private bakeOffTransitionId?: string;
   private platforms: PlatformObject[] = [];
   private obstacles: ObstacleObject[] = [];
   private thrusters: ThrusterObject[] = [];
@@ -231,6 +240,9 @@ export class PlayScene extends Phaser.Scene {
     this.currentCatPose = undefined;
     this.controlDebugText = undefined;
     this.bakeOffLoadingText = undefined;
+    this.bakeOffStartupTimer = undefined;
+    this.bakeOffReadyHandler = undefined;
+    this.bakeOffTransitionId = undefined;
     this.platforms = [];
     this.obstacles = [];
     this.thrusters = [];
@@ -316,6 +328,7 @@ export class PlayScene extends Phaser.Scene {
     this.createControlDebugOverlay();
     this.updatePowerAvailabilityVisual();
     this.startCountdown();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.clearBakeOffStartupGuard());
 
     this.cameras.main.startFollow(this.cat, true, 0.14, 0.14, 0, 30);
     this.cameras.main.setBounds(0, 0, this.worldWidth, this.worldHeight);
@@ -1181,15 +1194,73 @@ export class PlayScene extends Phaser.Scene {
     const actionScore = this.currentScore();
     const station = this.buildEndBakeOffStation();
     const completion = this.buildLevelCompletionSnapshot(actionScore);
+    const transitionId = `${this.level.id}-bakeoff-${Date.now()}-${Phaser.Math.Between(1000, 9999)}`;
+    this.bakeOffTransitionId = transitionId;
+
+    this.bakeOffReadyHandler = (payload: BakeOffReadyPayload) => {
+      if (payload.transitionId !== transitionId) {
+        return;
+      }
+
+      this.clearBakeOffStartupGuard();
+    };
+    this.game.events.on(BAKEOFF_READY_EVENT, this.bakeOffReadyHandler);
+    this.bakeOffStartupTimer = this.time.delayedCall(BAKEOFF_STARTUP_TIMEOUT_MS, () => {
+      this.recoverFromBakeOffStartupFailure(transitionId, completion);
+    });
 
     this.time.delayedCall(120, () => {
-      this.scene.start('BakingMiniGameScene', {
-        station,
-        stationNumber: this.level.index + 1,
-        actionScore,
-        levelTitle: this.level.title,
-        completion
-      });
+      if (this.bakeOffTransitionId !== transitionId) {
+        return;
+      }
+
+      try {
+        this.scene.stop('BakingMiniGameScene');
+        this.scene.launch('BakingMiniGameScene', {
+          station,
+          stationNumber: this.level.index + 1,
+          actionScore,
+          levelTitle: this.level.title,
+          completion,
+          transitionId
+        });
+        this.scene.bringToTop('BakingMiniGameScene');
+      } catch (error) {
+        console.error('Bake-off scene failed to launch.', error);
+        this.recoverFromBakeOffStartupFailure(transitionId, completion);
+      }
+    });
+  }
+
+  private clearBakeOffStartupGuard(): void {
+    if (this.bakeOffStartupTimer) {
+      this.bakeOffStartupTimer.remove(false);
+      this.bakeOffStartupTimer = undefined;
+    }
+
+    if (this.bakeOffReadyHandler) {
+      this.game.events.off(BAKEOFF_READY_EVENT, this.bakeOffReadyHandler);
+      this.bakeOffReadyHandler = undefined;
+    }
+
+    this.bakeOffTransitionId = undefined;
+  }
+
+  private recoverFromBakeOffStartupFailure(transitionId: string, completion: LevelCompletionSnapshot): void {
+    if (this.bakeOffTransitionId !== transitionId) {
+      return;
+    }
+
+    this.clearBakeOffStartupGuard();
+    this.showBakeOffLoading('Bake-Off had trouble loading.\nSaving Sergio\'s score...');
+    this.scene.stop('BakingMiniGameScene');
+
+    const summary = buildFallbackLevelCompletionSummary(completion);
+    const summaries = (this.registry.get('scoreSummaries') ?? []) as ScoreSummary[];
+    this.registry.set('scoreSummaries', upsertLevelCompletionSummary(summaries, summary));
+
+    this.time.delayedCall(500, () => {
+      this.scene.start('ResultsScene', { levelIndex: this.level.index, summary });
     });
   }
 

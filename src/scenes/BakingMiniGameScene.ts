@@ -17,6 +17,7 @@ import {
   type BakeRushStep,
   type BakeRushTicket
 } from '../game/bakeRush';
+import { BAKEOFF_READY_EVENT } from '../game/bakeOffTransition';
 import {
   buildLevelCompletionSummary,
   fallbackBakeOffResult,
@@ -32,6 +33,7 @@ export interface BakingMiniGameSceneData {
   actionScore?: number;
   levelTitle?: string;
   completion?: LevelCompletionSnapshot;
+  transitionId?: string;
 }
 
 interface StationDisplay {
@@ -102,10 +104,11 @@ export class BakingMiniGameScene extends Phaser.Scene {
   private station!: BakingStationDefinition;
   private order!: BakeRushOrder;
   private eventKey = '';
+  private transitionId = '';
   private levelTitle = '';
   private actionScore = 0;
   private completion?: LevelCompletionSnapshot;
-  private watchdogTimer?: number;
+  private playWatchdogTimer?: number;
   private resultTimer?: number;
   private finished = false;
   private currentTicketIndex = 0;
@@ -154,16 +157,12 @@ export class BakingMiniGameScene extends Phaser.Scene {
     this.station = data.station;
     this.order = buildBakeRushOrder(data.station, data.stationNumber);
     this.eventKey = data.eventKey ?? '';
+    this.transitionId = data.transitionId ?? '';
     this.levelTitle = data.levelTitle ?? data.station.label;
     this.actionScore = data.actionScore ?? 0;
     this.completion = data.completion;
     this.finished = false;
     this.clearSceneTimers();
-    if (this.completion) {
-      this.watchdogTimer = window.setTimeout(() => {
-        this.finishWithResult(fallbackBakeOffResult());
-      }, BAKEOFF_WATCHDOG_MS);
-    }
     this.currentTicketIndex = 0;
     this.currentStepIndex = 0;
     this.recipeMistakes = 0;
@@ -238,19 +237,26 @@ export class BakingMiniGameScene extends Phaser.Scene {
   }
 
   create(data: BakingMiniGameSceneData): void {
-    this.createBackdrop(data.levelTitle ?? this.levelTitle);
-    this.createTicketPanel();
-    this.createBakeStage();
-    this.createScorePanel();
-    this.createStationButtons();
-    this.renderCurrentTicket();
-    this.updatePrompt();
-    this.updateStatusText();
-    this.refreshStationHighlights();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.clearSceneTimers();
       this.cleanupKeyboardHandlers();
     });
+
+    try {
+      this.createBackdrop(data.levelTitle ?? this.levelTitle);
+      this.createTicketPanel();
+      this.createBakeStage();
+      this.createScorePanel();
+      this.createStationButtons();
+      this.renderCurrentTicket();
+      this.updatePrompt();
+      this.updateStatusText();
+      this.refreshStationHighlights();
+      this.markBakeOffReady();
+    } catch (error) {
+      console.error('Bake-off scene failed during startup.', error);
+      this.finishWithResult(fallbackBakeOffResult());
+    }
   }
 
   update(_time: number, delta: number): void {
@@ -1014,6 +1020,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
       const summary = buildLevelCompletionSummary(this.completion, result);
       const summaries = (this.registry.get('scoreSummaries') ?? []) as ScoreSummary[];
       this.registry.set('scoreSummaries', upsertLevelCompletionSummary(summaries, summary));
+      this.scene.stop('PlayScene');
       this.scene.start('ResultsScene', { levelIndex: this.completion.level.index, summary });
       return;
     }
@@ -1025,10 +1032,22 @@ export class BakingMiniGameScene extends Phaser.Scene {
     this.scene.stop();
   }
 
+  private markBakeOffReady(): void {
+    if (this.transitionId) {
+      this.game.events.emit(BAKEOFF_READY_EVENT, { transitionId: this.transitionId });
+    }
+
+    if (this.completion) {
+      this.playWatchdogTimer = window.setTimeout(() => {
+        this.finishWithResult(fallbackBakeOffResult());
+      }, BAKEOFF_WATCHDOG_MS);
+    }
+  }
+
   private clearSceneTimers(): void {
-    if (this.watchdogTimer !== undefined) {
-      window.clearTimeout(this.watchdogTimer);
-      this.watchdogTimer = undefined;
+    if (this.playWatchdogTimer !== undefined) {
+      window.clearTimeout(this.playWatchdogTimer);
+      this.playWatchdogTimer = undefined;
     }
 
     if (this.resultTimer !== undefined) {

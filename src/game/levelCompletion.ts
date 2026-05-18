@@ -56,5 +56,8 @@ export const buildLevelCompletionSummary = (
   });
 };
 
+export const buildFallbackLevelCompletionSummary = (snapshot: LevelCompletionSnapshot): ScoreSummary =>
+  buildLevelCompletionSummary(snapshot, fallbackBakeOffResult());
+
 export const upsertLevelCompletionSummary = (summaries: ScoreSummary[], summary: ScoreSummary): ScoreSummary[] =>
   replaceScoreSummary(summaries, summary);
