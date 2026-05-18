@@ -81,13 +81,14 @@ const ACTION_CLEAR_BEHIND = 180;
 const HUD_HEIGHT = 62;
 const HUD_DEPTH = 20;
 const CONTROL_Y = 666;
-const CONTROL_ALPHA_TOUCH = 0.58;
-const CONTROL_ALPHA_DESKTOP = 0.2;
+const CONTROL_ALPHA_TOUCH = 0.5;
+const CONTROL_ALPHA_DESKTOP = 0.16;
 const CONTROL_ALPHA_PRESSED = 0.88;
 const COURSE_BAND_ALPHA = 0.16;
 const POWER_BADGE_PICKUP_RADIUS = 92;
 const KNIGHT_PLATFORM_X_OFFSET = 145;
 const KNIGHT_TRAVEL_MS = 420;
+const BAKE_OFF_RECOVERY_MS = 8000;
 const PICKUP_ASSET_BY_ACTION: Record<ActionType, AssetKey> = {
   jump: 'treat-cupcake-base',
   slide: 'treat-donut-base',
@@ -176,6 +177,9 @@ export class PlayScene extends Phaser.Scene {
   private powerIcon?: Phaser.GameObjects.Image;
   private powerButtonCircle?: Phaser.GameObjects.Arc;
   private powerButtonGlow?: Phaser.GameObjects.Arc;
+  private controlDebugText?: Phaser.GameObjects.Text;
+  private bakeOffLoadingText?: Phaser.GameObjects.Text;
+  private bakeOffLoadingObjects: Phaser.GameObjects.GameObject[] = [];
   private platforms: PlatformObject[] = [];
   private obstacles: ObstacleObject[] = [];
   private thrusters: ThrusterObject[] = [];
@@ -238,6 +242,9 @@ export class PlayScene extends Phaser.Scene {
     this.completed = false;
     this.invincible = false;
     this.currentCatPose = undefined;
+    this.controlDebugText = undefined;
+    this.bakeOffLoadingText = undefined;
+    this.bakeOffLoadingObjects = [];
     this.platforms = [];
     this.obstacles = [];
     this.thrusters = [];
@@ -319,6 +326,7 @@ export class PlayScene extends Phaser.Scene {
     this.createCat();
     this.createHud();
     this.createControls();
+    this.createControlDebugOverlay();
     this.updatePowerAvailabilityVisual();
     this.startCountdown();
 
@@ -333,6 +341,7 @@ export class PlayScene extends Phaser.Scene {
 
     this.animateObstacles(time);
     this.handleKeyboardInput();
+    this.updateControlDebugOverlay();
 
     if (!this.runStarted) {
       return;
@@ -371,6 +380,13 @@ export class PlayScene extends Phaser.Scene {
     );
     sky.fillRect(0, 0, this.worldWidth, this.worldHeight);
 
+    const backgroundKey = this.levelBackgroundAssetKey();
+    if (this.textures.exists(backgroundKey)) {
+      for (let y = 360; y < this.worldHeight + 360; y += 720) {
+        this.add.image(this.worldWidth / 2, y, backgroundKey).setDisplaySize(this.worldWidth, 720).setDepth(0.05).setAlpha(0.48);
+      }
+    }
+
     const bandStops = [0, ...this.level.platforms.map((platform) => platform.y).sort((a, b) => a - b), this.groundY + 180];
     for (let index = 0; index < bandStops.length - 1; index += 1) {
       const top = bandStops[index];
@@ -393,25 +409,27 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private createGround(): void {
+    const floorEdgeKey = this.floorEdgeAssetKey();
+    const edgeHeight = this.textures.exists(floorEdgeKey) ? Math.min(52, assetsByKey[floorEdgeKey].height) : 18;
+
     this.add.rectangle(
       this.worldWidth / 2,
-      this.groundY + 70,
+      this.groundY + 82,
       this.worldWidth + 200,
-      180,
+      166,
       this.level.palette.ground,
-      0.46
-    );
-    const floorEdgeKey = this.floorEdgeAssetKey();
-    this.add.rectangle(this.worldWidth / 2, this.groundY + 26, this.worldWidth + 200, 28, 0x102033, 0.2).setDepth(2);
+      0.74
+    ).setDepth(2);
+    this.add.rectangle(this.worldWidth / 2, this.groundY + 132, this.worldWidth + 200, 34, 0x102033, 0.2).setDepth(2.5);
     if (this.textures.exists(floorEdgeKey)) {
-      const groundEdge = this.add
-        .tileSprite(this.worldWidth / 2, this.groundY + 9, this.worldWidth + 200, assetsByKey[floorEdgeKey].height, floorEdgeKey)
+      this.add
+        .tileSprite(this.worldWidth / 2, this.groundY + 8, this.worldWidth + 200, edgeHeight, floorEdgeKey)
         .setDepth(4)
         .setAlpha(0.98);
-      groundEdge.setFlipY(true);
     } else {
-      this.add.rectangle(this.worldWidth / 2, this.groundY + 8, this.worldWidth + 200, 18, 0xffffff, 0.55);
+      this.add.rectangle(this.worldWidth / 2, this.groundY + 4, this.worldWidth + 200, edgeHeight, 0xffffff, 0.55).setDepth(4);
     }
+    this.add.rectangle(this.worldWidth / 2, this.groundY + 1, this.worldWidth + 200, 4, 0x102033, 0.25).setDepth(6);
   }
 
   private createCat(): void {
@@ -456,24 +474,26 @@ export class PlayScene extends Phaser.Scene {
     const floorEdgeKey = this.floorEdgeAssetKey();
 
     for (const platform of this.level.platforms) {
-      this.add.rectangle(platform.x, platform.y + 78, platform.width + 28, 26, 0x102033, 0.18).setDepth(2);
+      const platformHeight = assetsByKey[platformKey].height;
+      const edgeHeight = this.textures.exists(floorEdgeKey) ? Math.min(52, assetsByKey[floorEdgeKey].height) : 12;
+      this.add.rectangle(platform.x, platform.y + platformHeight + 14, platform.width + 36, 28, 0x102033, 0.2).setDepth(2);
       const body = this.add
         .tileSprite(
           platform.x,
-          platform.y + assetsByKey[platformKey].height / 2,
+          platform.y + platformHeight / 2,
           platform.width,
-          assetsByKey[platformKey].height,
+          platformHeight,
           platformKey
         )
         .setDepth(3);
       const edge = this.textures.exists(floorEdgeKey)
         ? this.add
-            .tileSprite(platform.x, platform.y + 10, platform.width + 26, assetsByKey[floorEdgeKey].height, floorEdgeKey)
+            .tileSprite(platform.x, platform.y + 8, platform.width + 26, edgeHeight, floorEdgeKey)
             .setDepth(5)
         : undefined;
-      this.add.rectangle(platform.x, platform.y + 2, platform.width + 10, 8, 0xffffff, 0.82).setDepth(6);
+      this.add.rectangle(platform.x, platform.y + 1, platform.width + 12, 4, 0x102033, 0.25).setDepth(6);
       if (!edge) {
-        this.add.rectangle(platform.x, platform.y + 3, platform.width, 8, 0xffffff, 0.7).setDepth(4);
+        this.add.rectangle(platform.x, platform.y + 4, platform.width, edgeHeight, 0xffffff, 0.7).setDepth(4);
       }
 
       this.platforms.push({ definition: platform, body, edge });
@@ -626,25 +646,25 @@ export class PlayScene extends Phaser.Scene {
 
     this.add.rectangle(640, 672, 1280, 96, 0x102033, 0.12).setScrollFactor(0).setDepth(29);
     this.powerButtonGlow = this.add
-      .circle(1120, CONTROL_Y, 56, 0xffd23f, 0.22)
+      .circle(1120, CONTROL_Y, 42, 0xffd23f, 0.16)
       .setScrollFactor(0)
       .setDepth(29)
       .setVisible(false);
     this.tweens.add({
       targets: this.powerButtonGlow,
-      alpha: { from: 0.14, to: 0.42 },
-      scale: { from: 0.94, to: 1.12 },
+      alpha: { from: 0.12, to: 0.34 },
+      scale: { from: 0.95, to: 1.04 },
       duration: 520,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut'
     });
 
-    this.createMoveButton(86, CONTROL_Y, 78, 'Back', 0x2f4056, -1);
-    this.createMoveButton(196, CONTROL_Y, 88, 'Run', 0x38a16d, 1);
-    this.createVerticalActionButton(888, CONTROL_Y, 82, 'Duck', 0xf05f73, 1);
-    this.createVerticalActionButton(998, CONTROL_Y, 88, 'Jump', 0x27b6a5, -1);
-    this.createTouchButton(1120, CONTROL_Y, 86, 'Power', 0xffd23f, () => this.usePower(), '#102033');
+    this.createMoveButton(86, CONTROL_Y, 88, 'Back', 0x2f4056, -1);
+    this.createMoveButton(196, CONTROL_Y, 96, 'Run', 0x38a16d, 1);
+    this.createVerticalActionButton(888, CONTROL_Y, 92, 'Duck', 0xf05f73, 1);
+    this.createVerticalActionButton(998, CONTROL_Y, 96, 'Jump', 0x27b6a5, -1);
+    this.createTouchButton(1120, CONTROL_Y, 96, 'Power', 0xffd23f, () => this.usePower(), '#102033', 66);
   }
 
   private createTouchButton(
@@ -654,13 +674,14 @@ export class PlayScene extends Phaser.Scene {
     label: string,
     color: number,
     onPress: () => void,
-    textColor = '#ffffff'
+    textColor = '#ffffff',
+    visibleSize = Math.max(58, size - 14)
   ): void {
     const container = this.add.container(x, y).setScrollFactor(0).setDepth(30);
     const baseAlpha = this.touchControlAlpha();
     const circle = this.add
-      .circle(0, 0, size / 2, color, baseAlpha)
-      .setStrokeStyle(4, 0xffffff, 0.72);
+      .circle(0, 0, visibleSize / 2, color, baseAlpha)
+      .setStrokeStyle(3, 0xffffff, 0.62);
     const text = this.add
       .text(0, 0, label, {
         fontFamily: 'Arial, sans-serif',
@@ -677,7 +698,7 @@ export class PlayScene extends Phaser.Scene {
     }
     hitZone.on('pointerdown', () => {
       circle.setAlpha(CONTROL_ALPHA_PRESSED);
-      circle.setScale(1.06);
+      circle.setScale(1.04);
       onPress();
     });
     hitZone.on('pointerup', () => {
@@ -686,6 +707,11 @@ export class PlayScene extends Phaser.Scene {
       this.updatePowerAvailabilityVisual();
     });
     hitZone.on('pointerout', () => {
+      circle.setAlpha(baseAlpha);
+      circle.setScale(1);
+      this.updatePowerAvailabilityVisual();
+    });
+    hitZone.on('pointerupoutside', () => {
       circle.setAlpha(baseAlpha);
       circle.setScale(1);
       this.updatePowerAvailabilityVisual();
@@ -702,9 +728,10 @@ export class PlayScene extends Phaser.Scene {
   ): void {
     const container = this.add.container(x, y).setScrollFactor(0).setDepth(30);
     const baseAlpha = this.touchControlAlpha();
+    const visibleSize = Math.max(62, size - 14);
     const circle = this.add
-      .circle(0, 0, size / 2, color, baseAlpha)
-      .setStrokeStyle(4, 0xffffff, 0.72);
+      .circle(0, 0, visibleSize / 2, color, baseAlpha)
+      .setStrokeStyle(3, 0xffffff, 0.62);
     const text = this.add
       .text(0, 0, label, {
         fontFamily: 'Arial, sans-serif',
@@ -716,16 +743,17 @@ export class PlayScene extends Phaser.Scene {
     const hitZone = this.add.zone(0, 0, size, size).setInteractive({ useHandCursor: true });
 
     const beginAction = () => {
+      this.startRunFromInput();
       if (this.canUseLadder()) {
         this.touchClimbDirection = direction;
         this.startClimb(direction);
         circle.setAlpha(CONTROL_ALPHA_PRESSED);
-        circle.setScale(1.06);
+        circle.setScale(1.04);
         return;
       }
 
       circle.setAlpha(CONTROL_ALPHA_PRESSED);
-      circle.setScale(1.06);
+      circle.setScale(1.04);
       if (direction < 0) {
         this.jump();
       } else {
@@ -757,9 +785,10 @@ export class PlayScene extends Phaser.Scene {
   ): void {
     const container = this.add.container(x, y).setScrollFactor(0).setDepth(30);
     const baseAlpha = this.touchControlAlpha();
+    const visibleSize = Math.max(60, size - 14);
     const circle = this.add
-      .circle(0, 0, size / 2, color, baseAlpha)
-      .setStrokeStyle(4, 0xffffff, 0.72);
+      .circle(0, 0, visibleSize / 2, color, baseAlpha)
+      .setStrokeStyle(3, 0xffffff, 0.62);
     const text = this.add
       .text(0, 0, label, {
         fontFamily: 'Arial, sans-serif',
@@ -771,9 +800,10 @@ export class PlayScene extends Phaser.Scene {
     const hitZone = this.add.zone(0, 0, size, size).setInteractive({ useHandCursor: true });
 
     const beginMove = () => {
+      this.startRunFromInput();
       this.touchMoveDirection = direction;
       circle.setAlpha(CONTROL_ALPHA_PRESSED);
-      circle.setScale(1.06);
+      circle.setScale(1.04);
     };
     const endMove = () => {
       if (this.touchMoveDirection === direction) {
@@ -790,9 +820,50 @@ export class PlayScene extends Phaser.Scene {
     hitZone.on('pointerupoutside', endMove);
   }
 
+  private createControlDebugOverlay(): void {
+    const params = new URLSearchParams(window.location.search);
+    if (!import.meta.env.DEV && !params.has('debugControls')) {
+      return;
+    }
+
+    this.controlDebugText = this.add
+      .text(16, 92, '', {
+        fontFamily: 'Consolas, monospace',
+        fontSize: '14px',
+        color: '#ffffff',
+        backgroundColor: 'rgba(16,32,51,0.72)',
+        padding: { x: 8, y: 6 }
+      })
+      .setScrollFactor(0)
+      .setDepth(80);
+    this.updateControlDebugOverlay();
+  }
+
+  private updateControlDebugOverlay(): void {
+    if (!this.controlDebugText) {
+      return;
+    }
+
+    this.controlDebugText.setText([
+      `run=${this.runStarted} moved=${this.hasMoved}`,
+      `move=${this.touchMoveDirection} climb=${this.touchClimbDirection}`,
+      `slide=${this.sliding} climbState=${this.climbing}`,
+      `vy=${Math.round(this.verticalVelocity)} held=${this.heldPower ?? 'none'} ready=${this.powerReady}`
+    ]);
+  }
+
   private handleKeyboardInput(): void {
     const wantsUp = this.isDown(this.cursors?.up) || this.isDown(this.keyJumpW);
     const wantsDown = this.isDown(this.cursors?.down) || this.isDown(this.keySlide);
+    const wantsHorizontal =
+      this.isDown(this.cursors?.left) ||
+      this.isDown(this.cursors?.right) ||
+      this.isDown(this.keyMoveLeftA) ||
+      this.isDown(this.keyMoveRightD);
+
+    if (!this.runStarted && (wantsUp || wantsDown || wantsHorizontal || this.isDown(this.keyPower))) {
+      this.startRunFromInput();
+    }
 
     if ((wantsUp || wantsDown) && this.canUseLadder()) {
       this.startClimb(wantsUp ? -1 : 1);
@@ -818,7 +889,7 @@ export class PlayScene extends Phaser.Scene {
 
   private jump(): void {
     if (!this.runStarted) {
-      return;
+      this.startRunFromInput();
     }
 
     if (this.canUseLadder()) {
@@ -842,7 +913,7 @@ export class PlayScene extends Phaser.Scene {
 
   private startSlide(): void {
     if (!this.runStarted) {
-      return;
+      this.startRunFromInput();
     }
 
     if (this.canUseLadder()) {
@@ -872,7 +943,7 @@ export class PlayScene extends Phaser.Scene {
 
   private usePower(): void {
     if (!this.runStarted) {
-      return;
+      this.startRunFromInput();
     }
 
     this.startRunClock();
@@ -1109,6 +1180,7 @@ export class PlayScene extends Phaser.Scene {
           target.destroy();
         }
       });
+      this.showBakeOffLoading('Loading Bake-Off...');
       this.launchEndBakeOff();
     });
   }
@@ -1132,6 +1204,7 @@ export class PlayScene extends Phaser.Scene {
     };
 
     const fallbackResult = (): void => {
+      this.showBakeOffLoading('Bake-Off did not respond. Opening results...');
       this.finishLevelWithBakeOff({
         mistakes: 1,
         perfect: false,
@@ -1151,7 +1224,8 @@ export class PlayScene extends Phaser.Scene {
       this.game.events.off(eventKey, onResult);
       bakingScene.events.off(Phaser.Scenes.Events.SHUTDOWN, recoverWithoutResult);
       this.activeBakingStation = false;
-      fallbackResult();
+      this.showBakeOffLoading('Bake-Off recovered. Opening results...');
+      window.setTimeout(fallbackResult, 650);
     };
 
     onResult = (result: unknown) => {
@@ -1183,13 +1257,14 @@ export class PlayScene extends Phaser.Scene {
         levelTitle: this.level.title
       });
       this.scene.pause('PlayScene');
-      safetyTimer = window.setTimeout(recoverWithoutResult, 90000);
+      safetyTimer = window.setTimeout(recoverWithoutResult, BAKE_OFF_RECOVERY_MS);
     } catch {
       recoverWithoutResult();
     }
   }
 
   private finishLevelWithBakeOff(result: BakingStationResult): void {
+    this.destroyBakeOffLoading();
     this.mathCorrect = result.mathCorrect;
     this.mathAttempts = result.mathAttempts;
     this.bakingStationsCompleted = 1;
@@ -1230,6 +1305,39 @@ export class PlayScene extends Phaser.Scene {
     this.scene.stop('BakingMiniGameScene');
     this.scene.resume('PlayScene');
     this.scene.start('ResultsScene', { levelIndex: this.level.index, summary });
+  }
+
+  private showBakeOffLoading(message: string): void {
+    if (!this.bakeOffLoadingText) {
+      const panel = this.add
+        .rectangle(640, 360, 620, 170, 0xfffcf1, 0.96)
+        .setStrokeStyle(6, 0xffd23f, 0.96)
+        .setScrollFactor(0)
+        .setDepth(70);
+      const shadow = this.add.rectangle(646, 370, 620, 170, 0x102033, 0.18).setScrollFactor(0).setDepth(69);
+      this.bakeOffLoadingText = this.add
+        .text(640, 360, message, {
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '30px',
+          color: '#102033',
+          fontStyle: '900',
+          align: 'center',
+          wordWrap: { width: 520 }
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(71);
+      this.bakeOffLoadingObjects = [shadow, panel, this.bakeOffLoadingText];
+      return;
+    }
+
+    this.bakeOffLoadingText.setText(message);
+  }
+
+  private destroyBakeOffLoading(): void {
+    this.bakeOffLoadingObjects.forEach((object) => object.destroy());
+    this.bakeOffLoadingObjects = [];
+    this.bakeOffLoadingText = undefined;
   }
 
   private buildEndBakeOffStation(): BakingStationDefinition {
@@ -1551,16 +1659,20 @@ export class PlayScene extends Phaser.Scene {
   private updatePowerAvailabilityVisual(): void {
     const hasReadyPower = this.powerReady && Boolean(this.heldPower);
     this.powerButtonGlow?.setVisible(hasReadyPower);
-    this.powerButtonCircle?.setAlpha(hasReadyPower ? 0.92 : this.touchControlAlpha());
-    this.powerButtonCircle?.setStrokeStyle(hasReadyPower ? 5 : 3, hasReadyPower ? 0xffd23f : 0xffffff, hasReadyPower ? 0.95 : 0.36);
+    this.powerButtonGlow?.setScale(1);
+    this.powerButtonCircle?.setScale(1);
+    this.powerButtonCircle?.setAlpha(hasReadyPower ? 0.82 : Math.max(0.18, this.touchControlAlpha() * 0.74));
+    this.powerButtonCircle?.setStrokeStyle(hasReadyPower ? 4 : 3, hasReadyPower ? 0xffd23f : 0xffffff, hasReadyPower ? 0.92 : 0.32);
     this.powerIcon?.setAlpha(hasReadyPower || Boolean(this.heldPower) ? 1 : 0.5);
   }
 
   private pulsePowerHud(): void {
-    const targets = [this.powerIcon, this.powerButtonGlow, this.powerButtonCircle].filter(Boolean);
+    this.powerButtonGlow?.setVisible(true);
+    this.powerButtonGlow?.setAlpha(this.powerReady ? 0.3 : 0.16);
+    const targets = [this.powerIcon, this.powerButtonGlow].filter(Boolean);
     this.tweens.add({
       targets,
-      scale: { from: 1, to: 1.16 },
+      scale: { from: 1, to: 1.1 },
       duration: 150,
       yoyo: true,
       repeat: 1,
@@ -1653,10 +1765,11 @@ export class PlayScene extends Phaser.Scene {
 
   private startClimb(_direction: -1 | 1): void {
     const ladder = this.nearestLadder();
-    if (!ladder || !this.runStarted) {
+    if (!ladder) {
       return;
     }
 
+    this.startRunFromInput();
     this.climbing = true;
     this.sliding = false;
     this.onGround = false;
@@ -1942,6 +2055,17 @@ export class PlayScene extends Phaser.Scene {
     this.time.delayedCall(180, () => this.cat.clearTint());
   }
 
+  private startRunFromInput(markMoved = true): void {
+    if (this.runStarted) {
+      return;
+    }
+
+    this.runStarted = true;
+    this.hasMoved = markMoved;
+    this.countdownText?.destroy();
+    this.countdownText = undefined;
+  }
+
   private startCountdown(): void {
     this.countdownText = this.add
       .text(640, 350, 'Hold Run', {
@@ -1958,9 +2082,7 @@ export class PlayScene extends Phaser.Scene {
 
     this.time.delayedCall(900, () => this.countdownText?.setText('Hold Run'));
     this.time.delayedCall(COUNTDOWN_MS, () => {
-      this.countdownText?.destroy();
-      this.countdownText = undefined;
-      this.runStarted = true;
+      this.startRunFromInput(false);
     });
   }
 
@@ -2013,6 +2135,7 @@ export class PlayScene extends Phaser.Scene {
       'bishop',
       'queen',
       'star',
+      this.levelBackgroundAssetKey(),
       this.platformAssetKey(),
       this.floorEdgeAssetKey(),
       this.ladderAssetKey(),
@@ -2034,6 +2157,17 @@ export class PlayScene extends Phaser.Scene {
         return 'platform-tower';
       case 'yarn':
         return 'platform-yarn';
+    }
+  }
+
+  private levelBackgroundAssetKey(): AssetKey {
+    switch (this.levelThemeKey()) {
+      case 'bakery':
+        return 'level-frosting-factory-bg';
+      case 'tower':
+        return 'level-birthday-beast-tower-bg';
+      case 'yarn':
+        return 'level-yarn-yard-bg';
     }
   }
 

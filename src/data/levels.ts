@@ -90,7 +90,7 @@ export const levels: LevelDefinition[] = [
     ],
     powerBadges: [
       { id: 'yy-rook-badge', x: 780, y: TOP_Y - 92, powerup: 'rook', label: 'Rook Dash' },
-      { id: 'yy-knight-badge', x: 460, y: FLOOR_4_Y - 104, powerup: 'knight', label: 'Knight Jump' }
+      { id: 'yy-knight-badge', x: 900, y: FLOOR_1_Y - 104, powerup: 'knight', label: 'Knight Jump' }
     ],
     bakingStations: []
   },
@@ -152,7 +152,7 @@ export const levels: LevelDefinition[] = [
     ],
     powerBadges: [
       { id: 'ff-knight-badge', x: 800, y: TOP_Y - 92, powerup: 'knight', label: 'Knight Jump' },
-      { id: 'ff-bishop-badge', x: 500, y: FLOOR_4_Y - 104, powerup: 'bishop', label: 'Bishop Leap' }
+      { id: 'ff-bishop-badge', x: 900, y: FLOOR_1_Y - 104, powerup: 'bishop', label: 'Bishop Leap' }
     ],
     bakingStations: []
   },
@@ -215,7 +215,7 @@ export const levels: LevelDefinition[] = [
     ],
     powerBadges: [
       { id: 'bt-queen-badge', x: 830, y: TOP_Y - 92, powerup: 'queen', label: 'Queen Shield' },
-      { id: 'bt-bishop-badge', x: 500, y: FLOOR_4_Y - 104, powerup: 'bishop', label: 'Bishop Leap' }
+      { id: 'bt-bishop-badge', x: 900, y: FLOOR_1_Y - 104, powerup: 'bishop', label: 'Bishop Leap' }
     ],
     bakingStations: []
   }

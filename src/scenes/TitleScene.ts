@@ -77,37 +77,37 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private createLogoPanel(): void {
-    const panel = this.addTitleImage('title-logo-panel', 640, 132, 5);
+    const panel = this.addTitleImage('title-logo-panel', 640, 136, 5);
     if (panel) {
-      panel.setDisplaySize(760, 208);
+      panel.setDisplaySize(820, 238);
     } else {
-      this.add.rectangle(640, 132, 760, 188, 0x6b4a8c, 0.95).setStrokeStyle(6, 0xffd23f).setDepth(5);
+      this.add.rectangle(640, 136, 820, 210, 0x6b4a8c, 0.95).setStrokeStyle(6, 0xffd23f).setDepth(5);
     }
 
     this.add
-      .text(640, 101, "Sergio's Cat Beast Birthday", {
+      .text(640, 112, "Sergio's Birthday Cat Quest", {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '44px',
+        fontSize: '38px',
         color: '#102033',
         fontStyle: '900',
         align: 'center',
-        wordWrap: { width: 650 }
+        wordWrap: { width: 640 }
       })
       .setOrigin(0.5)
-      .setStroke('#fff4c7', 7)
+      .setStroke('#fff4c7', 5)
       .setDepth(6);
 
     this.add
-      .text(640, 166, 'Climb, dodge, grab pastries, then win the bake-off.', {
+      .text(640, 174, 'Climb the course. Grab treats. Win the bake-off.', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '24px',
+        fontSize: '21px',
         color: '#2f4056',
         fontStyle: '900',
         align: 'center',
-        wordWrap: { width: 650 }
+        wordWrap: { width: 600 }
       })
       .setOrigin(0.5)
-      .setStroke('#fff4c7', 4)
+      .setStroke('#fff4c7', 3)
       .setDepth(6);
   }
 
@@ -134,8 +134,8 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private createStartButton(): void {
-    const glow = this.addTitleImage('title-start-button-glow', 640, 584, 5);
-    glow?.setDisplaySize(486, 156).setAlpha(0.64);
+    const glow = this.addTitleImage('title-start-button-glow', 640, 582, 5);
+    glow?.setDisplaySize(500, 164).setAlpha(0.56);
     if (glow) {
       this.tweens.add({
         targets: glow,
@@ -148,15 +148,15 @@ export class TitleScene extends Phaser.Scene {
       });
     }
 
-    this.startButton = this.addTitleImage('title-start-button', 640, 584, 6) ??
-      this.add.rectangle(640, 584, 430, 92, 0xffd23f).setStrokeStyle(5, 0xffffff).setDepth(6);
-    this.startButton.setDisplaySize(430, 116);
+    this.startButton = this.addTitleImage('title-start-button', 640, 582, 6) ??
+      this.add.rectangle(640, 582, 430, 130, 0xffd23f).setStrokeStyle(5, 0xffffff).setDepth(6);
+    this.startButton.setDisplaySize(430, 130);
     this.startButton.setInteractive({ useHandCursor: true });
 
     this.add
-      .text(640, 584, 'Start Game', {
+      .text(640, 596, 'Start Course', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '34px',
+        fontSize: '30px',
         color: '#ffffff',
         fontStyle: '900'
       })

@@ -194,7 +194,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
       }
 
       const asset = assetsByKey[key];
-      const assetUrl = resolveAssetUrl(asset, window.devicePixelRatio);
+      const assetUrl = resolveAssetUrl(asset, 1);
       if (assetUrl) {
         this.load.image(key, assetUrl);
       }

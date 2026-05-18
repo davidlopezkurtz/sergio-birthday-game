@@ -75,6 +75,7 @@ const imageUrls = import.meta.glob(
     './images/frosting-apply*.png',
     './images/judge*.png',
     './images/ladder*.png',
+    './images/level-*-bg.png',
     './images/math-*.png',
     './images/mixing-bowl*.png',
     './images/multiplier-badge*.png',
@@ -269,6 +270,14 @@ export const titleAssetKeys = [
 
 export type TitleAssetKey = (typeof titleAssetKeys)[number];
 
+export const courseBackgroundAssetKeys = [
+  'level-yarn-yard-bg',
+  'level-frosting-factory-bg',
+  'level-birthday-beast-tower-bg'
+] as const;
+
+export type CourseBackgroundAssetKey = (typeof courseBackgroundAssetKeys)[number];
+
 export const courseDetailAssetKeys = [
   'ladder-yarn',
   'ladder-bakery',
@@ -320,6 +329,7 @@ export type AssetKey =
   | 'platform-yarn'
   | 'platform-bakery'
   | 'platform-tower'
+  | CourseBackgroundAssetKey
   | CourseDetailAssetKey
   | TitleAssetKey
   | BakeoffAssetKey;
@@ -525,6 +535,16 @@ const titleAssetManifest: AssetManifestEntry[] = titleAssetKeys.map((key) => {
     highDpiUrl: imageAssetUrl(`${key}-2x`)
   };
 });
+
+const courseBackgroundAssetManifest: AssetManifestEntry[] = courseBackgroundAssetKeys.map((key) => ({
+  key,
+  description: `Course background art: ${key}`,
+  width: 1280,
+  height: 720,
+  kind: 'Background',
+  url: imageAssetUrl(key),
+  highDpiUrl: imageAssetUrl(`${key}-2x`)
+}));
 
 const courseDetailAssetSize = (key: CourseDetailAssetKey): { width: number; height: number } => {
   if (key.startsWith('ladder')) {
@@ -849,6 +869,7 @@ export const assetManifest: AssetManifestEntry[] = [
     url: platformTowerUrl,
     highDpiUrl: platformTowerHighDpiUrl
   },
+  ...courseBackgroundAssetManifest,
   ...courseDetailAssetManifest,
   ...titleAssetManifest,
   ...bakeoffAssetManifest
