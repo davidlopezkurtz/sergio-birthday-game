@@ -19,6 +19,7 @@ import {
 import type {
   ActionType,
   BakingStationDefinition,
+  CourseLadderDefinition,
   CoursePlatformDefinition,
   LevelDefinition,
   ObstacleDefinition,
@@ -59,10 +60,12 @@ interface BakingStationObject {
   label: Phaser.GameObjects.Text;
 }
 
-const GROUND_Y = 560;
-const CAT_START_X = 160;
+const DEFAULT_GROUND_Y = 560;
+const DEFAULT_CAT_START_X = 160;
+const DEFAULT_WORLD_HEIGHT = 720;
 const CAT_BASE_SPEED = 230;
 const CAT_BACK_SPEED = 170;
+const CLIMB_SPEED = 260;
 const COUNTDOWN_MS = 1400;
 const JUMP_ACTION_GRACE_MS = 1150;
 const SLIDE_ACTION_GRACE_MS = 950;
@@ -138,11 +141,17 @@ export class PlayScene extends Phaser.Scene {
   private bakingStations: BakingStationObject[] = [];
   private verticalVelocity = 0;
   private onGround = true;
-  private currentSurfaceY = GROUND_Y;
+  private currentSurfaceY = DEFAULT_GROUND_Y;
+  private groundY = DEFAULT_GROUND_Y;
+  private startX = DEFAULT_CAT_START_X;
+  private worldWidth = 1280;
+  private worldHeight = DEFAULT_WORLD_HEIGHT;
   private runStarted = false;
   private hasMoved = false;
   private countdownText?: Phaser.GameObjects.Text;
   private touchMoveDirection = 0;
+  private touchClimbDirection = 0;
+  private climbing = false;
   private lastJumpAt = Number.NEGATIVE_INFINITY;
   private lastSlideAt = Number.NEGATIVE_INFINITY;
   private lastPowerAt = Number.NEGATIVE_INFINITY;
@@ -153,6 +162,10 @@ export class PlayScene extends Phaser.Scene {
 
   init(data: PlaySceneData): void {
     this.level = levels[data.levelIndex] ?? levels[0];
+    this.groundY = this.level.groundY ?? DEFAULT_GROUND_Y;
+    this.startX = this.level.startX ?? DEFAULT_CAT_START_X;
+    this.worldWidth = this.level.worldWidth ?? this.level.trackLength + 800;
+    this.worldHeight = this.level.worldHeight ?? DEFAULT_WORLD_HEIGHT;
     this.elapsedMs = 0;
     this.mathCorrect = 0;
     this.mathAttempts = 0;
@@ -188,10 +201,12 @@ export class PlayScene extends Phaser.Scene {
     this.bakingStations = [];
     this.verticalVelocity = 0;
     this.onGround = true;
-    this.currentSurfaceY = GROUND_Y;
+    this.currentSurfaceY = this.groundY;
     this.runStarted = false;
     this.hasMoved = false;
     this.touchMoveDirection = 0;
+    this.touchClimbDirection = 0;
+    this.climbing = false;
     this.lastJumpAt = Number.NEGATIVE_INFINITY;
     this.lastSlideAt = Number.NEGATIVE_INFINITY;
     this.lastPowerAt = Number.NEGATIVE_INFINITY;
@@ -246,9 +261,10 @@ export class PlayScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.physics.world.setBounds(0, 0, this.level.trackLength + 800, 720);
+    this.physics.world.setBounds(0, 0, this.worldWidth, this.worldHeight);
     this.createBackdrop();
     this.createGround();
+    this.createLadders();
     this.createPlatforms();
     this.createObstacles();
     this.createPointThrusters();
@@ -259,8 +275,8 @@ export class PlayScene extends Phaser.Scene {
     this.createControls();
     this.startCountdown();
 
-    this.cameras.main.startFollow(this.cat, true, 0.12, 0.12, -360, 120);
-    this.cameras.main.setBounds(0, 0, this.level.trackLength + 700, 720);
+    this.cameras.main.startFollow(this.cat, true, 0.14, 0.14, 0, 70);
+    this.cameras.main.setBounds(0, 0, this.worldWidth, this.worldHeight);
   }
 
   update(time: number, delta: number): void {
@@ -275,7 +291,7 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
 
-    if (this.getMoveDirection() !== 0) {
+    if (this.getMoveDirection() !== 0 || this.getClimbDirection() !== 0 || this.climbing) {
       this.hasMoved = true;
     }
 
@@ -283,8 +299,10 @@ export class PlayScene extends Phaser.Scene {
       this.elapsedMs += delta;
     }
 
+    this.applyClimbMovement(delta);
     this.applyHorizontalMovement(delta);
     this.applyManualGravity(delta);
+    this.animateCatMotion(time);
 
     this.checkObstacleOverlaps();
     this.checkThrusterOverlaps();
@@ -305,7 +323,7 @@ export class PlayScene extends Phaser.Scene {
       this.level.palette.skyBottom,
       1
     );
-    sky.fillRect(0, 0, this.level.trackLength + 900, 720);
+    sky.fillRect(0, 0, this.worldWidth, this.worldHeight);
 
     const backgroundKey = this.levelBackgroundAssetKey();
     if (this.textures.exists(backgroundKey)) {
@@ -317,7 +335,7 @@ export class PlayScene extends Phaser.Scene {
     } else {
       for (let index = 0; index < 16; index += 1) {
         const x = 240 + index * 380;
-        const y = 120 + (index % 4) * 42;
+        const y = 120 + (index % 8) * 90;
         this.add.circle(x, y, 34, 0xffffff, 0.3);
         this.add.circle(x + 42, y + 8, 26, 0xffffff, 0.25);
         this.add.circle(x - 38, y + 12, 22, 0xffffff, 0.22);
@@ -325,7 +343,7 @@ export class PlayScene extends Phaser.Scene {
     }
 
     this.add
-      .text(90, 130, this.level.title, {
+      .text(90, Math.max(120, this.groundY - 480), this.level.title, {
         fontFamily: 'Arial, sans-serif',
         fontSize: '34px',
         color: '#102033',
@@ -336,20 +354,48 @@ export class PlayScene extends Phaser.Scene {
 
   private createGround(): void {
     this.add.rectangle(
-      this.level.trackLength / 2 + 400,
-      GROUND_Y + 70,
-      this.level.trackLength + 900,
+      this.worldWidth / 2,
+      this.groundY + 70,
+      this.worldWidth + 200,
       180,
       this.level.palette.ground,
       0.46
     );
-    this.add.rectangle(this.level.trackLength / 2 + 400, GROUND_Y + 8, this.level.trackLength + 900, 18, 0xffffff, 0.55);
+    this.add.rectangle(this.worldWidth / 2, this.groundY + 8, this.worldWidth + 200, 18, 0xffffff, 0.55);
   }
 
   private createCat(): void {
-    this.cat = this.add.sprite(CAT_START_X, GROUND_Y - 90, 'cat');
+    this.cat = this.add.sprite(this.startX, this.groundY - 90, 'cat');
     this.setAssetDisplaySize(this.cat, 'cat');
     this.cat.setDepth(5);
+  }
+
+  private createLadders(): void {
+    for (const ladder of this.level.ladders ?? []) {
+      const top = Math.min(ladder.yTop, ladder.yBottom);
+      const bottom = Math.max(ladder.yTop, ladder.yBottom);
+      const y = (top + bottom) / 2;
+      const height = bottom - top + 20;
+
+      this.add.rectangle(ladder.x - 25, y, 8, height, 0x8c5b2e, 0.94).setDepth(2);
+      this.add.rectangle(ladder.x + 25, y, 8, height, 0x8c5b2e, 0.94).setDepth(2);
+
+      for (let rungY = top + 18; rungY <= bottom - 16; rungY += 34) {
+        this.add.rectangle(ladder.x, rungY, 66, 7, 0xffd23f, 0.92).setDepth(2);
+      }
+
+      this.add
+        .text(ladder.x, top - 24, ladder.label, {
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '16px',
+          color: '#102033',
+          fontStyle: '900',
+          backgroundColor: 'rgba(255,255,255,0.72)',
+          padding: { x: 7, y: 3 }
+        })
+        .setOrigin(0.5)
+        .setDepth(4);
+    }
   }
 
   private createPlatforms(): void {
@@ -380,7 +426,7 @@ export class PlayScene extends Phaser.Scene {
     this.obstacles = [];
 
     for (const obstacle of this.level.obstacles) {
-      const y = this.getObstacleY(obstacle.kind);
+      const y = this.getObstacleY(obstacle);
       const assetKey = this.obstacleAssetKey(obstacle.kind);
       const sprite = this.add.image(obstacle.x, y, assetKey);
       sprite.setDepth(4);
@@ -441,25 +487,26 @@ export class PlayScene extends Phaser.Scene {
     this.bakingStations = [];
 
     for (const station of this.level.bakingStations) {
+      const stationSurfaceY = station.y ?? this.groundY;
       const totalValue = station.value + station.perfectBonus;
       this.add
-        .circle(station.x, GROUND_Y - 108, 70, 0xffd23f, 0.15)
+        .circle(station.x, stationSurfaceY - 108, 70, 0xffd23f, 0.15)
         .setStrokeStyle(5, 0xffd23f, 0.95)
         .setDepth(3);
       const base = this.add
-        .rectangle(station.x, GROUND_Y - 80, 168, 116, 0xfff4c7, 0.96)
+        .rectangle(station.x, stationSurfaceY - 80, 168, 116, 0xfff4c7, 0.96)
         .setStrokeStyle(5, 0x102033)
         .setDepth(4);
-      const frosting = this.add.circle(station.x, GROUND_Y - 108, 48, 0xff9ec7, 0.94).setDepth(5);
-      this.add.circle(station.x - 26, GROUND_Y - 118, 7, 0xffd23f, 1).setDepth(6);
-      this.add.circle(station.x + 7, GROUND_Y - 128, 7, 0x27b6a5, 1).setDepth(6);
-      this.add.circle(station.x + 30, GROUND_Y - 109, 7, 0xf05f73, 1).setDepth(6);
+      const frosting = this.add.circle(station.x, stationSurfaceY - 108, 48, 0xff9ec7, 0.94).setDepth(5);
+      this.add.circle(station.x - 26, stationSurfaceY - 118, 7, 0xffd23f, 1).setDepth(6);
+      this.add.circle(station.x + 7, stationSurfaceY - 128, 7, 0x27b6a5, 1).setDepth(6);
+      this.add.circle(station.x + 30, stationSurfaceY - 109, 7, 0xf05f73, 1).setDepth(6);
       this.add
-        .rectangle(station.x, GROUND_Y - 39, 136, 44, 0xd56b6b, 1)
+        .rectangle(station.x, stationSurfaceY - 39, 136, 44, 0xd56b6b, 1)
         .setStrokeStyle(3, 0x102033)
         .setDepth(5);
       this.add
-        .text(station.x, GROUND_Y - 47, `Base +${station.value}`, {
+        .text(station.x, stationSurfaceY - 47, `Base +${station.value}`, {
           fontFamily: 'Arial, sans-serif',
           fontSize: '16px',
           color: '#ffffff',
@@ -468,7 +515,7 @@ export class PlayScene extends Phaser.Scene {
         .setOrigin(0.5)
         .setDepth(6);
       this.add
-        .text(station.x, GROUND_Y - 26, `Perfect +${station.perfectBonus}`, {
+        .text(station.x, stationSurfaceY - 26, `Perfect +${station.perfectBonus}`, {
           fontFamily: 'Arial, sans-serif',
           fontSize: '15px',
           color: '#ffec9f',
@@ -477,7 +524,7 @@ export class PlayScene extends Phaser.Scene {
         .setOrigin(0.5)
         .setDepth(6);
       const label = this.add
-        .text(station.x, GROUND_Y - 176, `Bake: ${station.label} +${totalValue}`, {
+        .text(station.x, stationSurfaceY - 176, `Bake: ${station.label} +${totalValue}`, {
           fontFamily: 'Arial, sans-serif',
           fontSize: '18px',
           color: '#102033',
@@ -503,14 +550,15 @@ export class PlayScene extends Phaser.Scene {
 
   private createMathGates(): void {
     this.level.gatePositions.forEach((x, index) => {
-      const gate = this.add.image(x, GROUND_Y - 108, 'gate').setDepth(3);
+      const gateSurfaceY = this.getGateSurfaceY(index);
+      const gate = this.add.image(x, gateSurfaceY - 108, 'gate').setDepth(3);
       this.setAssetDisplaySize(gate, 'gate');
       this.add
-        .rectangle(x, GROUND_Y - 108, 118, 48, 0xfffcec)
+        .rectangle(x, gateSurfaceY - 108, 118, 48, 0xfffcec)
         .setStrokeStyle(4, 0x2a1a0e)
         .setDepth(4);
       this.add
-        .text(x, GROUND_Y - 108, `Gate ${index + 1}`, {
+        .text(x, gateSurfaceY - 108, `Gate ${index + 1}`, {
           fontFamily: 'Arial, sans-serif',
           fontSize: '24px',
           color: '#102033',
@@ -519,11 +567,11 @@ export class PlayScene extends Phaser.Scene {
         .setOrigin(0.5)
         .setDepth(4);
       this.add
-        .rectangle(x, GROUND_Y - 57, 70, 35, 0x38a16d)
+        .rectangle(x, gateSurfaceY - 57, 70, 35, 0x38a16d)
         .setStrokeStyle(4, 0x2a1a0e)
         .setDepth(4);
       this.add
-        .text(x, GROUND_Y - 57, 'Math', {
+        .text(x, gateSurfaceY - 57, 'Math', {
           fontFamily: 'Arial, sans-serif',
           fontSize: '17px',
           color: '#ffffff',
@@ -622,8 +670,8 @@ export class PlayScene extends Phaser.Scene {
 
     this.createMoveButton(110, 642, 104, 'Back', 0x2f4056, -1);
     this.createMoveButton(250, 642, 128, 'Run', 0x38a16d, 1);
-    this.createTouchButton(840, 642, 108, 'Slide', 0xf05f73, () => this.startSlide());
-    this.createTouchButton(980, 642, 108, 'Jump', 0x27b6a5, () => this.jump());
+    this.createVerticalActionButton(840, 642, 108, 'Down', 0xf05f73, 1);
+    this.createVerticalActionButton(980, 642, 108, 'Jump', 0x27b6a5, -1);
     this.createTouchButton(1130, 642, 108, 'Power', 0xffd23f, () => this.usePower(), '#102033');
   }
 
@@ -652,6 +700,56 @@ export class PlayScene extends Phaser.Scene {
 
     container.add([circle, text, hitZone]);
     hitZone.on('pointerdown', onPress);
+  }
+
+  private createVerticalActionButton(
+    x: number,
+    y: number,
+    size: number,
+    label: string,
+    color: number,
+    direction: -1 | 1
+  ): void {
+    const container = this.add.container(x, y).setScrollFactor(0).setDepth(30);
+    const circle = this.add
+      .circle(0, 0, size / 2, color, 0.92)
+      .setStrokeStyle(5, 0xffffff);
+    const text = this.add
+      .text(0, 0, label, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '22px',
+        color: '#ffffff',
+        fontStyle: '900'
+      })
+      .setOrigin(0.5);
+    const hitZone = this.add.zone(0, 0, size, size).setInteractive({ useHandCursor: true });
+
+    const beginAction = () => {
+      if (this.canUseLadder()) {
+        this.touchClimbDirection = direction;
+        this.startClimb(direction);
+        circle.setScale(1.07);
+        return;
+      }
+
+      if (direction < 0) {
+        this.jump();
+      } else {
+        this.startSlide();
+      }
+    };
+    const endAction = () => {
+      if (this.touchClimbDirection === direction) {
+        this.touchClimbDirection = 0;
+      }
+      circle.setScale(1);
+    };
+
+    container.add([circle, text, hitZone]);
+    hitZone.on('pointerdown', beginAction);
+    hitZone.on('pointerup', endAction);
+    hitZone.on('pointerout', endAction);
+    hitZone.on('pointerupoutside', endAction);
   }
 
   private createMoveButton(
@@ -697,6 +795,14 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private handleKeyboardInput(): void {
+    const wantsUp = this.isDown(this.cursors?.up) || this.isDown(this.keyJumpW);
+    const wantsDown = this.isDown(this.cursors?.down) || this.isDown(this.keySlide);
+
+    if ((wantsUp || wantsDown) && this.canUseLadder()) {
+      this.startClimb(wantsUp ? -1 : 1);
+      return;
+    }
+
     if (this.justDown(this.cursors?.up) || this.justDown(this.keyJumpW)) {
       this.jump();
     }
@@ -719,6 +825,11 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
 
+    if (this.canUseLadder()) {
+      this.startClimb(-1);
+      return;
+    }
+
     this.startRunClock();
     this.lastJumpAt = this.elapsedMs;
     this.resolveNearbyObstaclesForAction('jump');
@@ -727,7 +838,7 @@ export class PlayScene extends Phaser.Scene {
     if (this.onGround) {
       this.verticalVelocity = -920;
       this.onGround = false;
-      this.currentSurfaceY = GROUND_Y;
+      this.currentSurfaceY = this.groundY;
       this.setCatPose('catJump');
       this.showActionFeedback('Jump!', 0x27b6a5);
     }
@@ -738,6 +849,11 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
 
+    if (this.canUseLadder()) {
+      this.startClimb(1);
+      return;
+    }
+
     this.startRunClock();
     this.lastSlideAt = this.elapsedMs;
     this.resolveNearbyObstaclesForAction('slide');
@@ -745,12 +861,12 @@ export class PlayScene extends Phaser.Scene {
     this.showActionFeedback('Slide!', 0xf05f73);
 
     if (this.sliding) {
-      this.cat.x = Phaser.Math.Clamp(this.cat.x + 12, CAT_START_X, this.level.trackLength + 120);
+      this.cat.x = Phaser.Math.Clamp(this.cat.x + 12, this.startX, this.worldWidth - 40);
       return;
     }
 
     this.sliding = true;
-    this.cat.x = Phaser.Math.Clamp(this.cat.x + 22, CAT_START_X, this.level.trackLength + 120);
+    this.cat.x = Phaser.Math.Clamp(this.cat.x + 22, this.startX, this.worldWidth - 40);
     this.setCatPose('catSlide');
 
     this.time.delayedCall(680, () => {
@@ -784,20 +900,22 @@ export class PlayScene extends Phaser.Scene {
 
     switch (power) {
       case 'rook':
-        this.cat.x = Phaser.Math.Clamp(this.cat.x + 180, CAT_START_X, this.level.trackLength + 120);
+        this.cat.x = Phaser.Math.Clamp(this.cat.x + 180, this.startX, this.worldWidth - 40);
         this.flashCat(0xffd23f);
         break;
       case 'knight':
         this.verticalVelocity = -850;
         this.onGround = false;
-        this.currentSurfaceY = GROUND_Y;
+        this.climbing = false;
+        this.currentSurfaceY = this.groundY;
         this.flashCat(0x27b6a5);
         break;
       case 'bishop':
         this.verticalVelocity = -650;
         this.onGround = false;
-        this.currentSurfaceY = GROUND_Y;
-        this.cat.x += 90;
+        this.climbing = false;
+        this.currentSurfaceY = this.groundY;
+        this.cat.x = Phaser.Math.Clamp(this.cat.x + 90, this.startX, this.worldWidth - 40);
         this.flashCat(0x6f64d9);
         break;
       case 'queen':
@@ -832,7 +950,12 @@ export class PlayScene extends Phaser.Scene {
 
     for (const stationObject of this.bakingStations) {
       const station = stationObject.definition;
-      if (this.bakingStationsSolved.has(station.id) || this.cat.x < station.x - 44) {
+      const stationSurfaceY = station.y ?? this.groundY;
+      if (
+        this.bakingStationsSolved.has(station.id) ||
+        this.cat.x < station.x - 44 ||
+        Math.abs(this.catSurfaceY() - stationSurfaceY) > 110
+      ) {
         continue;
       }
 
@@ -878,7 +1001,7 @@ export class PlayScene extends Phaser.Scene {
           awardedPoints,
           'baking',
           station.x,
-          GROUND_Y - 188,
+          stationSurfaceY - 188,
           result.perfect ? 'Perfect bake!' : 'Bake bonus'
         );
         this.finishBakingStationVisual(stationObject);
@@ -911,7 +1034,12 @@ export class PlayScene extends Phaser.Scene {
 
     for (let index = 0; index < this.level.gatePositions.length; index += 1) {
       const gateX = this.level.gatePositions[index];
-      if (this.gatesSolved.has(index) || this.cat.x < gateX - 44) {
+      const gateSurfaceY = this.getGateSurfaceY(index);
+      if (
+        this.gatesSolved.has(index) ||
+        this.cat.x < gateX - 44 ||
+        Math.abs(this.catSurfaceY() - gateSurfaceY) > 125
+      ) {
         continue;
       }
 
@@ -978,7 +1106,14 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private checkLevelComplete(): void {
-    if (this.cat.x < this.level.trackLength) {
+    const finish = this.level.finish;
+    if (finish) {
+      const atFinish =
+        Math.abs(this.cat.x - finish.x) <= finish.width / 2 && Math.abs(this.catSurfaceY() - finish.y) <= 95;
+      if (!atFinish) {
+        return;
+      }
+    } else if (this.cat.x < this.level.trackLength) {
       return;
     }
 
@@ -1037,6 +1172,10 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private applyHorizontalMovement(delta: number): void {
+    if (this.climbing) {
+      return;
+    }
+
     const direction = this.getMoveDirection();
     if (direction === 0) {
       return;
@@ -1044,7 +1183,7 @@ export class PlayScene extends Phaser.Scene {
 
     const baseSpeed = direction > 0 ? CAT_BASE_SPEED : CAT_BACK_SPEED;
     const speed = this.activePower && this.activePowerType === 'rook' && direction > 0 ? 520 : baseSpeed;
-    this.cat.x = Phaser.Math.Clamp(this.cat.x + (direction * speed * delta) / 1000, CAT_START_X, this.level.trackLength + 120);
+    this.cat.x = Phaser.Math.Clamp(this.cat.x + (direction * speed * delta) / 1000, 48, this.worldWidth - 48);
     this.cat.setFlipX(direction < 0);
   }
 
@@ -1068,13 +1207,29 @@ export class PlayScene extends Phaser.Scene {
     return Boolean(key?.isDown);
   }
 
+  private getClimbDirection(): -1 | 0 | 1 {
+    if (this.touchClimbDirection !== 0) {
+      return this.touchClimbDirection as -1 | 1;
+    }
+
+    if (this.isDown(this.cursors?.up) || this.isDown(this.keyJumpW)) {
+      return -1;
+    }
+
+    if (this.isDown(this.cursors?.down) || this.isDown(this.keySlide)) {
+      return 1;
+    }
+
+    return 0;
+  }
+
   private startRunClock(): void {
     this.hasMoved = true;
   }
 
   private isObstacleClearedByAction(kind: ObstacleDefinition['kind']): boolean {
     const jumpIsFresh =
-      this.actionIsFresh(this.lastJumpAt, JUMP_ACTION_GRACE_MS) || this.cat.y < GROUND_Y - 78 || this.activePower;
+      this.actionIsFresh(this.lastJumpAt, JUMP_ACTION_GRACE_MS) || this.cat.y < this.currentSurfaceY - 78 || this.activePower;
     const slideIsFresh = this.sliding || this.actionIsFresh(this.lastSlideAt, SLIDE_ACTION_GRACE_MS);
     const powerIsFresh = this.activePower || this.actionIsFresh(this.lastPowerAt, POWER_ACTION_GRACE_MS);
 
@@ -1212,7 +1367,7 @@ export class PlayScene extends Phaser.Scene {
       case undefined:
         return true;
       case 'jump':
-        return this.actionIsFresh(this.lastJumpAt, JUMP_ACTION_GRACE_MS) || this.cat.y < GROUND_Y - 78;
+        return this.actionIsFresh(this.lastJumpAt, JUMP_ACTION_GRACE_MS) || this.cat.y < this.currentSurfaceY - 78;
       case 'slide':
         return this.sliding || this.actionIsFresh(this.lastSlideAt, SLIDE_ACTION_GRACE_MS);
       case 'power':
@@ -1330,7 +1485,93 @@ export class PlayScene extends Phaser.Scene {
     });
   }
 
+  private applyClimbMovement(delta: number): void {
+    const direction = this.getClimbDirection();
+
+    if (!this.climbing && direction !== 0 && this.canUseLadder()) {
+      this.startClimb(direction);
+    }
+
+    if (!this.climbing) {
+      return;
+    }
+
+    const ladder = this.nearestLadder();
+    if (!ladder) {
+      this.climbing = false;
+      return;
+    }
+
+    if (direction === 0) {
+      this.verticalVelocity = 0;
+      return;
+    }
+
+    const topCatY = ladder.yTop - 90;
+    const bottomCatY = ladder.yBottom - 90;
+    this.cat.x = Phaser.Math.Linear(this.cat.x, ladder.x, 0.28);
+    this.cat.y = Phaser.Math.Clamp(this.cat.y + (direction * CLIMB_SPEED * delta) / 1000, topCatY, bottomCatY);
+    this.verticalVelocity = 0;
+    this.onGround = false;
+    this.startRunClock();
+    this.collectNearbyThrustersForAction('jump');
+
+    if (this.cat.y <= topCatY + 2) {
+      this.cat.y = topCatY;
+      this.currentSurfaceY = ladder.yTop;
+      this.climbing = false;
+      this.onGround = true;
+      this.restoreMovementCatPose();
+    } else if (this.cat.y >= bottomCatY - 2) {
+      this.cat.y = bottomCatY;
+      this.currentSurfaceY = ladder.yBottom;
+      this.climbing = false;
+      this.onGround = true;
+      this.restoreMovementCatPose();
+    } else {
+      this.setCatPose('catJump');
+    }
+  }
+
+  private canUseLadder(): boolean {
+    return Boolean(this.nearestLadder());
+  }
+
+  private startClimb(direction: -1 | 1): void {
+    const ladder = this.nearestLadder();
+    if (!ladder || !this.runStarted) {
+      return;
+    }
+
+    this.climbing = true;
+    this.sliding = false;
+    this.onGround = false;
+    this.verticalVelocity = 0;
+    this.cat.x = Phaser.Math.Linear(this.cat.x, ladder.x, 0.45);
+    this.setCatPose('catJump');
+    this.showActionFeedback(direction < 0 ? 'Climb!' : 'Down!', 0xffd23f);
+  }
+
+  private nearestLadder(): CourseLadderDefinition | undefined {
+    const catSurfaceY = this.catSurfaceY();
+
+    return (this.level.ladders ?? []).find(
+      (ladder) =>
+        Math.abs(this.cat.x - ladder.x) <= 74 &&
+        catSurfaceY >= Math.min(ladder.yTop, ladder.yBottom) - 42 &&
+        catSurfaceY <= Math.max(ladder.yTop, ladder.yBottom) + 42
+    );
+  }
+
+  private catSurfaceY(): number {
+    return this.cat.y + 90;
+  }
+
   private applyManualGravity(delta: number): void {
+    if (this.climbing) {
+      return;
+    }
+
     if (this.onGround && !this.hasSurfaceSupport(this.currentSurfaceY)) {
       this.onGround = false;
       this.verticalVelocity = 0;
@@ -1355,6 +1596,29 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
+  private animateCatMotion(time: number): void {
+    if (!this.cat) {
+      return;
+    }
+
+    if (this.climbing) {
+      this.cat.setAngle(Math.sin(time / 85) * 5);
+      return;
+    }
+
+    if (!this.onGround) {
+      this.cat.setAngle(this.verticalVelocity < 0 ? -8 : 8);
+      return;
+    }
+
+    if (this.getMoveDirection() !== 0) {
+      this.cat.setAngle(Math.sin(time / 85) * 4);
+      return;
+    }
+
+    this.cat.setAngle(0);
+  }
+
   private getLandingSurfaceY(previousY: number): number | undefined {
     if (this.verticalVelocity < 0) {
       return undefined;
@@ -1364,7 +1628,7 @@ export class PlayScene extends Phaser.Scene {
       ...this.level.platforms
         .filter((platform) => this.cat.x >= platform.x - platform.width / 2 && this.cat.x <= platform.x + platform.width / 2)
         .map((platform) => platform.y),
-      GROUND_Y
+      this.groundY
     ];
 
     const crossedSurfaces = candidates
@@ -1376,7 +1640,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private hasSurfaceSupport(surfaceY: number): boolean {
-    if (surfaceY === GROUND_Y) {
+    if (surfaceY === this.groundY) {
       return true;
     }
 
@@ -1447,18 +1711,26 @@ export class PlayScene extends Phaser.Scene {
     );
   }
 
-  private getObstacleY(kind: ObstacleDefinition['kind']): number {
-    switch (kind) {
+  private getGateSurfaceY(index: number): number {
+    return this.level.gateYPositions?.[index] ?? this.groundY;
+  }
+
+  private getObstacleY(obstacle: ObstacleDefinition): number {
+    if (obstacle.y !== undefined) {
+      return obstacle.y;
+    }
+
+    switch (obstacle.kind) {
       case 'lowBarrier':
-        return GROUND_Y - 142;
+        return this.groundY - 142;
       case 'swing':
-        return GROUND_Y - 164;
+        return this.groundY - 164;
       case 'frostingPit':
-        return GROUND_Y - 34;
+        return this.groundY - 34;
       case 'cakeWall':
-        return GROUND_Y - 86;
+        return this.groundY - 86;
       case 'hurdle':
-        return GROUND_Y - 64;
+        return this.groundY - 64;
     }
   }
 

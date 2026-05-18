@@ -30,6 +30,7 @@ export interface ObstacleDefinition {
   id: string;
   kind: ObstacleKind;
   x: number;
+  y?: number;
   label: string;
 }
 
@@ -38,6 +39,14 @@ export interface CoursePlatformDefinition {
   x: number;
   y: number;
   width: number;
+  label: string;
+}
+
+export interface CourseLadderDefinition {
+  id: string;
+  x: number;
+  yTop: number;
+  yBottom: number;
   label: string;
 }
 
@@ -54,6 +63,7 @@ export interface PointThrusterDefinition {
 export interface BakingStationDefinition {
   id: string;
   x: number;
+  y?: number;
   label: string;
   recipe: BakingIngredient[];
   value: number;
@@ -77,8 +87,20 @@ export interface LevelDefinition {
   targetTimeMs: number;
   targetScore: number;
   trackLength: number;
+  worldWidth?: number;
+  worldHeight?: number;
+  startX?: number;
+  groundY?: number;
   gatePositions: number[];
+  gateYPositions?: number[];
+  finish?: {
+    x: number;
+    y: number;
+    width: number;
+    label: string;
+  };
   platforms: CoursePlatformDefinition[];
+  ladders?: CourseLadderDefinition[];
   obstacles: ObstacleDefinition[];
   pointThrusters: PointThrusterDefinition[];
   bakingStations: BakingStationDefinition[];

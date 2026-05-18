@@ -1,25 +1,57 @@
 import type { LevelDefinition } from '../types';
 
+const WORLD_WIDTH = 1280;
+const WORLD_HEIGHT = 1740;
+const GROUND_Y = 1580;
+const START_X = 130;
+
+const obstacleY = (kind: LevelDefinition['obstacles'][number]['kind'], surfaceY: number): number => {
+  switch (kind) {
+    case 'lowBarrier':
+      return surfaceY - 142;
+    case 'swing':
+      return surfaceY - 164;
+    case 'frostingPit':
+      return surfaceY - 34;
+    case 'cakeWall':
+      return surfaceY - 86;
+    case 'hurdle':
+      return surfaceY - 64;
+  }
+};
+
 export const levels: LevelDefinition[] = [
   {
     id: 'yarn-yard',
     index: 0,
     title: 'Yarn Yard Qualifier',
-    subtitle: 'Rook Dash through the yarn-yard trials.',
-    theme: 'A bright backyard course with yarn-ball rollers and fence jumps.',
+    subtitle: 'Climb the yarn tower, dodge course hazards, and chase the top route.',
+    theme: 'A bright backyard tower course with yarn ladders, rail jumps, and score ledges.',
     mathCategories: ['addSub'],
     powerup: 'rook',
     targetTimeMs: 90000,
-    targetScore: 6500,
-    trackLength: 6400,
-    gatePositions: [1850, 4000, 5600],
+    targetScore: 7200,
+    trackLength: 1180,
+    worldWidth: WORLD_WIDTH,
+    worldHeight: WORLD_HEIGHT,
+    startX: START_X,
+    groundY: GROUND_Y,
+    gatePositions: [900, 300, 930],
+    gateYPositions: [GROUND_Y, 1100, 620],
+    finish: { x: 1050, y: 380, width: 260, label: 'Top Yarn Bell' },
     platforms: [
-      { id: 'yy-platform-1', x: 980, y: 486, width: 360, label: 'Lower Yarn Step' },
-      { id: 'yy-platform-2', x: 1370, y: 430, width: 420, label: 'Kitten Climb Lane' },
-      { id: 'yy-platform-3', x: 1780, y: 374, width: 390, label: 'Gate Perch' },
-      { id: 'yy-platform-4', x: 4320, y: 470, width: 380, label: 'Fence Step' },
-      { id: 'yy-platform-5', x: 4800, y: 410, width: 460, label: 'High Yarn Ledge' },
-      { id: 'yy-platform-6', x: 5260, y: 350, width: 420, label: 'Rafter Dash' }
+      { id: 'yy-floor-1', x: 700, y: 1340, width: 1050, label: 'Yarn Yard Floor 2' },
+      { id: 'yy-floor-2', x: 580, y: 1100, width: 1050, label: 'Kitten Climb Floor' },
+      { id: 'yy-floor-3', x: 700, y: 860, width: 1050, label: 'Ribbon Rail Floor' },
+      { id: 'yy-floor-4', x: 580, y: 620, width: 1050, label: 'High Yarn Floor' },
+      { id: 'yy-top', x: 820, y: 380, width: 720, label: 'Top Yarn Bell' }
+    ],
+    ladders: [
+      { id: 'yy-ladder-1', x: 1050, yTop: 1340, yBottom: GROUND_Y, label: 'Climb' },
+      { id: 'yy-ladder-2', x: 260, yTop: 1100, yBottom: 1340, label: 'Climb' },
+      { id: 'yy-ladder-3', x: 1030, yTop: 860, yBottom: 1100, label: 'Climb' },
+      { id: 'yy-ladder-4', x: 300, yTop: 620, yBottom: 860, label: 'Climb' },
+      { id: 'yy-ladder-5', x: 990, yTop: 380, yBottom: 620, label: 'Summit' }
     ],
     palette: {
       skyTop: 0x96e7ff,
@@ -29,22 +61,22 @@ export const levels: LevelDefinition[] = [
       secondary: 0xef6f8f
     },
     obstacles: [
-      { id: 'yy-hurdle-1', kind: 'hurdle', x: 1120, label: 'Ribbon Rail' },
-      { id: 'yy-low-1', kind: 'lowBarrier', x: 2600, label: 'Yarn Tunnel' },
-      { id: 'yy-swing-1', kind: 'swing', x: 3400, label: 'Swinging Donut' },
-      { id: 'yy-hurdle-2', kind: 'hurdle', x: 4800, label: 'Fence Pop' },
-      { id: 'yy-wall-1', kind: 'cakeWall', x: 6200, label: 'Gift Stack' }
+      { id: 'yy-hurdle-1', kind: 'hurdle', x: 430, y: obstacleY('hurdle', GROUND_Y), label: 'Ribbon Rail' },
+      { id: 'yy-swing-1', kind: 'swing', x: 720, y: obstacleY('swing', 1340), label: 'Swinging Yarn' },
+      { id: 'yy-low-1', kind: 'lowBarrier', x: 430, y: obstacleY('lowBarrier', 1100), label: 'Yarn Tunnel' },
+      { id: 'yy-hurdle-2', kind: 'hurdle', x: 800, y: obstacleY('hurdle', 860), label: 'Fence Pop' },
+      { id: 'yy-wall-1', kind: 'cakeWall', x: 1060, y: obstacleY('cakeWall', 380), label: 'Gift Stack' }
     ],
     pointThrusters: [
-      { id: 'yy-thruster-jump-1', x: 1120, y: 410, value: 100, requiredAction: 'jump', kind: 'small' },
-      { id: 'yy-thruster-step-1', x: 980, y: 422, value: 250, requiredAction: 'jump', kind: 'medium' },
-      { id: 'yy-thruster-high-1', x: 1370, y: 355, value: 250, requiredAction: 'jump', kind: 'medium' },
-      { id: 'yy-thruster-perch-1', x: 1780, y: 300, value: 250, requiredAction: 'jump', kind: 'medium' },
-      { id: 'yy-thruster-slide-1', x: 2600, y: 500, value: 250, requiredAction: 'slide', kind: 'medium' },
-      { id: 'yy-thruster-slide-2', x: 3400, y: 430, value: 250, requiredAction: 'slide', kind: 'medium' },
-      { id: 'yy-thruster-jump-2', x: 4800, y: 335, value: 500, requiredAction: 'jump', kind: 'risky' },
-      { id: 'yy-thruster-rafters', x: 5260, y: 275, value: 500, requiredAction: 'jump', kind: 'risky' },
-      { id: 'yy-thruster-power-1', x: 6200, y: 430, value: 500, requiredAction: 'power', kind: 'risky' }
+      { id: 'yy-thruster-bottom-1', x: 430, y: GROUND_Y - 150, value: 250, requiredAction: 'jump', kind: 'medium' },
+      { id: 'yy-thruster-ladder-1', x: 1050, y: 1450, value: 250, requiredAction: 'jump', kind: 'medium' },
+      { id: 'yy-thruster-floor-1', x: 720, y: 1265, value: 250, requiredAction: 'slide', kind: 'medium' },
+      { id: 'yy-thruster-ladder-2', x: 260, y: 1210, value: 250, requiredAction: 'jump', kind: 'medium' },
+      { id: 'yy-thruster-floor-2', x: 430, y: 1018, value: 250, requiredAction: 'slide', kind: 'medium' },
+      { id: 'yy-thruster-floor-3', x: 800, y: 775, value: 500, requiredAction: 'jump', kind: 'risky' },
+      { id: 'yy-thruster-high-1', x: 300, y: 735, value: 500, requiredAction: 'jump', kind: 'risky' },
+      { id: 'yy-thruster-high-2', x: 930, y: 545, value: 500, requiredAction: 'jump', kind: 'risky' },
+      { id: 'yy-thruster-summit', x: 1060, y: 305, value: 750, requiredAction: 'power', kind: 'risky' }
     ],
     bakingStations: []
   },
@@ -52,24 +84,33 @@ export const levels: LevelDefinition[] = [
     id: 'frosting-factory',
     index: 1,
     title: 'Frosting Factory Bake-Off',
-    subtitle: 'Knight Jump over frosting, mixers, and cupcake towers.',
-    theme: 'A bakery-show course with frosting slides and ingredient stations.',
+    subtitle: 'Climb the mixer tower, hit bake stations, and take the risky frosting route.',
+    theme: 'A bakery-show tower with frosting ladders, mixer arms, and cupcake balconies.',
     mathCategories: ['multiplyDivide'],
     powerup: 'knight',
     targetTimeMs: 105000,
-    targetScore: 7600,
-    trackLength: 6600,
-    gatePositions: [1500, 3600, 5400],
+    targetScore: 8400,
+    trackLength: 1180,
+    worldWidth: WORLD_WIDTH,
+    worldHeight: WORLD_HEIGHT,
+    startX: START_X,
+    groundY: GROUND_Y,
+    gatePositions: [830, 350, 920],
+    gateYPositions: [GROUND_Y, 1100, 620],
+    finish: { x: 1050, y: 380, width: 260, label: 'Cake Stand Summit' },
     platforms: [
-      { id: 'ff-platform-1', x: 1120, y: 475, width: 380, label: 'Sugar Step' },
-      { id: 'ff-platform-2', x: 1560, y: 420, width: 390, label: 'Gate Gantry' },
-      { id: 'ff-platform-3', x: 2060, y: 452, width: 420, label: 'Cupcake Step-Up' },
-      { id: 'ff-platform-4', x: 2580, y: 390, width: 440, label: 'Cupcake Balcony' },
-      { id: 'ff-platform-5', x: 3500, y: 470, width: 380, label: 'Mixer Step' },
-      { id: 'ff-platform-6', x: 3920, y: 405, width: 500, label: 'Mixer Mezzanine' },
-      { id: 'ff-platform-7', x: 4380, y: 345, width: 420, label: 'Donut Rail' },
-      { id: 'ff-platform-8', x: 5780, y: 430, width: 470, label: 'Cake Top Route' },
-      { id: 'ff-platform-9', x: 6200, y: 365, width: 430, label: 'Final Frosting Rise' }
+      { id: 'ff-floor-1', x: 700, y: 1340, width: 1050, label: 'Sugar Step Floor' },
+      { id: 'ff-floor-2', x: 580, y: 1100, width: 1050, label: 'Cupcake Balcony' },
+      { id: 'ff-floor-3', x: 700, y: 860, width: 1050, label: 'Mixer Mezzanine' },
+      { id: 'ff-floor-4', x: 580, y: 620, width: 1050, label: 'Donut Rail Floor' },
+      { id: 'ff-top', x: 820, y: 380, width: 720, label: 'Cake Stand Summit' }
+    ],
+    ladders: [
+      { id: 'ff-ladder-1', x: 1040, yTop: 1340, yBottom: GROUND_Y, label: 'Climb' },
+      { id: 'ff-ladder-2', x: 250, yTop: 1100, yBottom: 1340, label: 'Climb' },
+      { id: 'ff-ladder-3', x: 1030, yTop: 860, yBottom: 1100, label: 'Climb' },
+      { id: 'ff-ladder-4', x: 310, yTop: 620, yBottom: 860, label: 'Climb' },
+      { id: 'ff-ladder-5', x: 990, yTop: 380, yBottom: 620, label: 'Summit' }
     ],
     palette: {
       skyTop: 0xffd6e7,
@@ -79,28 +120,27 @@ export const levels: LevelDefinition[] = [
       secondary: 0x6f64d9
     },
     obstacles: [
-      { id: 'ff-pit-1', kind: 'frostingPit', x: 760, label: 'Frosting Slick' },
-      { id: 'ff-hurdle-1', kind: 'hurdle', x: 2250, label: 'Cupcake Stack' },
-      { id: 'ff-low-1', kind: 'lowBarrier', x: 3000, label: 'Mixer Arm' },
-      { id: 'ff-swing-1', kind: 'swing', x: 4400, label: 'Rolling Pin' },
-      { id: 'ff-wall-1', kind: 'cakeWall', x: 6300, label: 'Layer Cake Wall' }
+      { id: 'ff-pit-1', kind: 'frostingPit', x: 430, y: obstacleY('frostingPit', GROUND_Y), label: 'Frosting Slick' },
+      { id: 'ff-hurdle-1', kind: 'hurdle', x: 780, y: obstacleY('hurdle', 1340), label: 'Cupcake Stack' },
+      { id: 'ff-low-1', kind: 'lowBarrier', x: 430, y: obstacleY('lowBarrier', 1100), label: 'Mixer Arm' },
+      { id: 'ff-swing-1', kind: 'swing', x: 830, y: obstacleY('swing', 860), label: 'Rolling Pin' },
+      { id: 'ff-wall-1', kind: 'cakeWall', x: 1050, y: obstacleY('cakeWall', 380), label: 'Layer Cake Wall' }
     ],
     pointThrusters: [
-      { id: 'ff-thruster-jump-1', x: 760, y: 410, value: 250, requiredAction: 'jump', kind: 'medium' },
-      { id: 'ff-thruster-step-1', x: 1120, y: 405, value: 250, requiredAction: 'jump', kind: 'medium' },
-      { id: 'ff-thruster-gate-1', x: 1560, y: 346, value: 250, requiredAction: 'jump', kind: 'medium' },
-      { id: 'ff-thruster-jump-2', x: 2060, y: 375, value: 500, requiredAction: 'jump', kind: 'risky' },
-      { id: 'ff-thruster-balcony-1', x: 2580, y: 315, value: 500, requiredAction: 'jump', kind: 'risky' },
-      { id: 'ff-thruster-slide-1', x: 3000, y: 500, value: 250, requiredAction: 'slide', kind: 'medium' },
-      { id: 'ff-thruster-high-1', x: 3920, y: 330, value: 500, requiredAction: 'jump', kind: 'risky' },
-      { id: 'ff-thruster-rail-1', x: 4380, y: 272, value: 500, requiredAction: 'jump', kind: 'risky' },
-      { id: 'ff-thruster-slide-2', x: 4400, y: 430, value: 250, requiredAction: 'slide', kind: 'medium' },
-      { id: 'ff-thruster-power-1', x: 5780, y: 355, value: 500, requiredAction: 'power', kind: 'risky' }
+      { id: 'ff-thruster-bottom-1', x: 430, y: GROUND_Y - 150, value: 250, requiredAction: 'jump', kind: 'medium' },
+      { id: 'ff-thruster-ladder-1', x: 1040, y: 1450, value: 250, requiredAction: 'jump', kind: 'medium' },
+      { id: 'ff-thruster-floor-1', x: 780, y: 1265, value: 500, requiredAction: 'jump', kind: 'risky' },
+      { id: 'ff-thruster-bake-1', x: 560, y: 1028, value: 250, requiredAction: 'jump', kind: 'medium' },
+      { id: 'ff-thruster-floor-2', x: 430, y: 1018, value: 250, requiredAction: 'slide', kind: 'medium' },
+      { id: 'ff-thruster-floor-3', x: 830, y: 780, value: 500, requiredAction: 'slide', kind: 'risky' },
+      { id: 'ff-thruster-bake-2', x: 720, y: 548, value: 500, requiredAction: 'jump', kind: 'risky' },
+      { id: 'ff-thruster-summit', x: 1050, y: 305, value: 750, requiredAction: 'power', kind: 'risky' }
     ],
     bakingStations: [
       {
         id: 'ff-bake-1',
-        x: 2580,
+        x: 560,
+        y: 1100,
         label: 'Cupcake Match',
         recipe: ['frosting', 'sprinkles', 'candle'],
         value: 500,
@@ -108,7 +148,8 @@ export const levels: LevelDefinition[] = [
       },
       {
         id: 'ff-bake-2',
-        x: 5180,
+        x: 720,
+        y: 620,
         label: 'Layer Cake Bonus',
         recipe: ['frosting', 'berry', 'sprinkles'],
         value: 650,
@@ -120,26 +161,34 @@ export const levels: LevelDefinition[] = [
     id: 'birthday-beast-tower',
     index: 2,
     title: 'Birthday Beast Tower',
-    subtitle: 'Bishop Leap and Queen Shield to crown the birthday champion.',
-    theme: 'A final tower course with candles, fractions, and confetti cannons.',
+    subtitle: 'Climb the birthday beast, use chess powers, and crown the cat champion.',
+    theme: 'A final stacked tower course with candle hops, fraction gates, and summit thrusters.',
     mathCategories: ['compareFraction'],
     powerup: 'queen',
     bonusPowerup: 'bishop',
     targetTimeMs: 120000,
-    targetScore: 8500,
-    trackLength: 7200,
-    gatePositions: [1500, 3400, 5300, 6500],
+    targetScore: 9400,
+    trackLength: 1180,
+    worldWidth: WORLD_WIDTH,
+    worldHeight: WORLD_HEIGHT,
+    startX: START_X,
+    groundY: GROUND_Y,
+    gatePositions: [820, 310, 900, 970],
+    gateYPositions: [GROUND_Y, 1100, 620, 380],
+    finish: { x: 1080, y: 380, width: 250, label: 'Birthday Crown' },
     platforms: [
-      { id: 'bt-platform-1', x: 900, y: 470, width: 360, label: 'Candle Step' },
-      { id: 'bt-platform-2', x: 1300, y: 415, width: 380, label: 'Fraction Perch' },
-      { id: 'bt-platform-3', x: 1700, y: 360, width: 360, label: 'Gate Catwalk' },
-      { id: 'bt-platform-4', x: 3000, y: 470, width: 380, label: 'Banner Step' },
-      { id: 'bt-platform-5', x: 3400, y: 410, width: 420, label: 'Middle Gate Ledge' },
-      { id: 'bt-platform-6', x: 4860, y: 472, width: 360, label: 'Tower Step 1' },
-      { id: 'bt-platform-7', x: 5300, y: 410, width: 360, label: 'Tower Step 2' },
-      { id: 'bt-platform-8', x: 5740, y: 348, width: 360, label: 'Tower Step 3' },
-      { id: 'bt-platform-9', x: 6180, y: 300, width: 360, label: 'Tower Step 4' },
-      { id: 'bt-platform-10', x: 6500, y: 360, width: 520, label: 'Summit Score Lane' }
+      { id: 'bt-floor-1', x: 700, y: 1340, width: 1050, label: 'Candle Step Floor' },
+      { id: 'bt-floor-2', x: 580, y: 1100, width: 1050, label: 'Fraction Perch Floor' },
+      { id: 'bt-floor-3', x: 700, y: 860, width: 1050, label: 'Confetti Catwalk' },
+      { id: 'bt-floor-4', x: 580, y: 620, width: 1050, label: 'Summit Approach' },
+      { id: 'bt-top', x: 820, y: 380, width: 720, label: 'Birthday Crown' }
+    ],
+    ladders: [
+      { id: 'bt-ladder-1', x: 1050, yTop: 1340, yBottom: GROUND_Y, label: 'Climb' },
+      { id: 'bt-ladder-2', x: 250, yTop: 1100, yBottom: 1340, label: 'Climb' },
+      { id: 'bt-ladder-3', x: 1030, yTop: 860, yBottom: 1100, label: 'Climb' },
+      { id: 'bt-ladder-4', x: 300, yTop: 620, yBottom: 860, label: 'Climb' },
+      { id: 'bt-ladder-5', x: 990, yTop: 380, yBottom: 620, label: 'Summit' }
     ],
     palette: {
       skyTop: 0x8fd6ff,
@@ -149,27 +198,22 @@ export const levels: LevelDefinition[] = [
       secondary: 0xf05f73
     },
     obstacles: [
-      { id: 'bt-hurdle-1', kind: 'hurdle', x: 680, label: 'Candle Hop' },
-      { id: 'bt-low-1', kind: 'lowBarrier', x: 2350, label: 'Banner Crawl' },
-      { id: 'bt-pit-1', kind: 'frostingPit', x: 4250, label: 'Sprinkle Slick' },
-      { id: 'bt-swing-1', kind: 'swing', x: 5900, label: 'Confetti Sweeper' },
-      { id: 'bt-wall-1', kind: 'cakeWall', x: 7050, label: 'Crown Cake' }
+      { id: 'bt-hurdle-1', kind: 'hurdle', x: 420, y: obstacleY('hurdle', GROUND_Y), label: 'Candle Hop' },
+      { id: 'bt-low-1', kind: 'lowBarrier', x: 760, y: obstacleY('lowBarrier', 1340), label: 'Banner Crawl' },
+      { id: 'bt-pit-1', kind: 'frostingPit', x: 450, y: obstacleY('frostingPit', 1100), label: 'Sprinkle Slick' },
+      { id: 'bt-swing-1', kind: 'swing', x: 820, y: obstacleY('swing', 860), label: 'Confetti Sweeper' },
+      { id: 'bt-wall-1', kind: 'cakeWall', x: 1080, y: obstacleY('cakeWall', 380), label: 'Crown Cake' }
     ],
     pointThrusters: [
-      { id: 'bt-thruster-jump-1', x: 680, y: 390, value: 250, requiredAction: 'jump', kind: 'medium' },
-      { id: 'bt-thruster-step-1', x: 900, y: 398, value: 250, requiredAction: 'jump', kind: 'medium' },
-      { id: 'bt-thruster-perch-1', x: 1300, y: 340, value: 500, requiredAction: 'jump', kind: 'risky' },
-      { id: 'bt-thruster-catwalk-1', x: 1700, y: 285, value: 500, requiredAction: 'jump', kind: 'risky' },
-      { id: 'bt-thruster-slide-1', x: 2350, y: 500, value: 250, requiredAction: 'slide', kind: 'medium' },
-      { id: 'bt-thruster-middle-1', x: 3400, y: 335, value: 500, requiredAction: 'jump', kind: 'risky' },
-      { id: 'bt-thruster-jump-2', x: 4250, y: 390, value: 500, requiredAction: 'jump', kind: 'risky' },
-      { id: 'bt-thruster-tower-1', x: 4860, y: 405, value: 500, requiredAction: 'jump', kind: 'risky' },
-      { id: 'bt-thruster-tower-2', x: 5300, y: 335, value: 500, requiredAction: 'jump', kind: 'risky' },
-      { id: 'bt-thruster-tower-3', x: 5740, y: 272, value: 750, requiredAction: 'jump', kind: 'risky' },
-      { id: 'bt-thruster-tower-4', x: 6180, y: 224, value: 750, requiredAction: 'jump', kind: 'risky' },
-      { id: 'bt-thruster-slide-2', x: 5900, y: 420, value: 500, requiredAction: 'slide', kind: 'risky' },
-      { id: 'bt-thruster-power-1', x: 6500, y: 286, value: 750, requiredAction: 'power', kind: 'risky' },
-      { id: 'bt-thruster-summit', x: 7050, y: 420, value: 750, requiredAction: 'power', kind: 'risky' }
+      { id: 'bt-thruster-bottom-1', x: 420, y: GROUND_Y - 150, value: 250, requiredAction: 'jump', kind: 'medium' },
+      { id: 'bt-thruster-ladder-1', x: 1050, y: 1450, value: 500, requiredAction: 'jump', kind: 'risky' },
+      { id: 'bt-thruster-floor-1', x: 760, y: 1215, value: 500, requiredAction: 'slide', kind: 'risky' },
+      { id: 'bt-thruster-ladder-2', x: 250, y: 1210, value: 500, requiredAction: 'jump', kind: 'risky' },
+      { id: 'bt-thruster-floor-2', x: 450, y: 1010, value: 500, requiredAction: 'jump', kind: 'risky' },
+      { id: 'bt-thruster-floor-3', x: 820, y: 780, value: 750, requiredAction: 'slide', kind: 'risky' },
+      { id: 'bt-thruster-high-1', x: 300, y: 735, value: 750, requiredAction: 'jump', kind: 'risky' },
+      { id: 'bt-thruster-high-2', x: 900, y: 545, value: 750, requiredAction: 'power', kind: 'risky' },
+      { id: 'bt-thruster-summit', x: 1080, y: 300, value: 1000, requiredAction: 'power', kind: 'multiplier' }
     ],
     bakingStations: []
   }
