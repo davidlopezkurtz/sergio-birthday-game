@@ -66,7 +66,6 @@ const DEFAULT_WORLD_HEIGHT = 720;
 const CAT_BASE_SPEED = 230;
 const CAT_BACK_SPEED = 170;
 const CLIMB_SPEED = 260;
-const CAT_STAND_FOOT_OFFSET = 65;
 const CAT_JUMP_VELOCITY = -920;
 const CAT_POWER_JUMP_VELOCITY = -850;
 const CAT_BISHOP_JUMP_VELOCITY = -650;
@@ -133,6 +132,28 @@ type CatPoseKey =
   | 'catHurt'
   | 'catVictory'
   | (typeof CAT_ANIMATION_ASSETS)[number];
+
+const CAT_VISIBLE_BOTTOM_PADDING: Partial<Record<CatPoseKey, number>> = {
+  cat: 14,
+  catSlide: 8,
+  catJump: 13,
+  catHurt: 12,
+  catVictory: 10,
+  catRun1: 12,
+  catRun2: 12,
+  catRun4: 13,
+  catRun5: 12,
+  catSlideFrame1: 8,
+  catSlideFrame2: 8,
+  catSlideFrame3: 8,
+  catJumpFrame1: 13,
+  catJumpFrame2: 13,
+  catJumpFrame3: 13,
+  catJumpFrame4: 13,
+  catBump1: 12,
+  catBump2: 12,
+  catBump3: 12
+};
 
 export class PlayScene extends Phaser.Scene {
   private level!: LevelDefinition;
@@ -410,6 +431,7 @@ export class PlayScene extends Phaser.Scene {
 
   private createGround(): void {
     const floorEdgeKey = this.floorEdgeAssetKey();
+    const isTower = this.levelThemeKey() === 'tower';
     const edgeHeight = this.textures.exists(floorEdgeKey) ? Math.min(52, assetsByKey[floorEdgeKey].height) : 18;
 
     this.add.rectangle(
@@ -421,6 +443,11 @@ export class PlayScene extends Phaser.Scene {
       0.74
     ).setDepth(2);
     this.add.rectangle(this.worldWidth / 2, this.groundY + 132, this.worldWidth + 200, 34, 0x102033, 0.2).setDepth(2.5);
+    if (isTower) {
+      this.add
+        .rectangle(this.worldWidth / 2, this.groundY + 31, this.worldWidth + 200, 54, 0x6f358f, 0.64)
+        .setDepth(3.2);
+    }
     if (this.textures.exists(floorEdgeKey)) {
       this.add
         .tileSprite(this.worldWidth / 2, this.groundY + 8, this.worldWidth + 200, edgeHeight, floorEdgeKey)
@@ -429,12 +456,23 @@ export class PlayScene extends Phaser.Scene {
     } else {
       this.add.rectangle(this.worldWidth / 2, this.groundY + 4, this.worldWidth + 200, edgeHeight, 0xffffff, 0.55).setDepth(4);
     }
-    this.add.rectangle(this.worldWidth / 2, this.groundY + 1, this.worldWidth + 200, 4, 0x102033, 0.25).setDepth(6);
+    this.add
+      .rectangle(
+        this.worldWidth / 2,
+        this.groundY + 1,
+        this.worldWidth + 200,
+        isTower ? 6 : 4,
+        isTower ? 0xffd23f : 0x102033,
+        isTower ? 0.78 : 0.25
+      )
+      .setDepth(6);
   }
 
   private createCat(): void {
-    this.cat = this.add.sprite(this.startX, this.groundY - CAT_STAND_FOOT_OFFSET, 'cat');
+    this.currentCatPose = 'cat';
+    this.cat = this.add.sprite(this.startX, this.groundY, 'cat');
     this.setAssetDisplaySize(this.cat, 'cat');
+    this.cat.y = this.groundY - this.catFootOffset();
     this.cat.setDepth(9);
   }
 
@@ -472,11 +510,15 @@ export class PlayScene extends Phaser.Scene {
     this.platforms = [];
     const platformKey = this.platformAssetKey();
     const floorEdgeKey = this.floorEdgeAssetKey();
+    const isTower = this.levelThemeKey() === 'tower';
 
     for (const platform of this.level.platforms) {
       const platformHeight = assetsByKey[platformKey].height;
       const edgeHeight = this.textures.exists(floorEdgeKey) ? Math.min(52, assetsByKey[floorEdgeKey].height) : 12;
       this.add.rectangle(platform.x, platform.y + platformHeight + 14, platform.width + 36, 28, 0x102033, 0.2).setDepth(2);
+      if (isTower) {
+        this.add.rectangle(platform.x, platform.y + 32, platform.width + 28, 58, 0x6f358f, 0.62).setDepth(2.8);
+      }
       const body = this.add
         .tileSprite(
           platform.x,
@@ -491,7 +533,16 @@ export class PlayScene extends Phaser.Scene {
             .tileSprite(platform.x, platform.y + 8, platform.width + 26, edgeHeight, floorEdgeKey)
             .setDepth(5)
         : undefined;
-      this.add.rectangle(platform.x, platform.y + 1, platform.width + 12, 4, 0x102033, 0.25).setDepth(6);
+      this.add
+        .rectangle(
+          platform.x,
+          platform.y + 1,
+          platform.width + 12,
+          isTower ? 6 : 4,
+          isTower ? 0xffd23f : 0x102033,
+          isTower ? 0.8 : 0.25
+        )
+        .setDepth(6);
       if (!edge) {
         this.add.rectangle(platform.x, platform.y + 4, platform.width, edgeHeight, 0xffffff, 0.7).setDepth(4);
       }
@@ -1772,7 +1823,11 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private catFootOffset(): number {
-    return Math.max(42, this.cat.displayHeight / 2 - 1);
+    return Math.max(34, this.cat.displayHeight / 2 - this.catVisibleBottomPadding());
+  }
+
+  private catVisibleBottomPadding(): number {
+    return CAT_VISIBLE_BOTTOM_PADDING[this.currentCatPose ?? 'cat'] ?? 12;
   }
 
   private applyManualGravity(delta: number): void {

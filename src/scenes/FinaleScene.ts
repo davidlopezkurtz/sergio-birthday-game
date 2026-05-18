@@ -28,17 +28,31 @@ export class FinaleScene extends Phaser.Scene {
     this.add.rectangle(640, 360, 1280, 720, 0x102033);
 
     for (let index = 0; index < 90; index += 1) {
-      this.add.rectangle(
+      const confetti = this.add.rectangle(
         Phaser.Math.Between(20, 1260),
         Phaser.Math.Between(20, 700),
         Phaser.Math.Between(8, 18),
         Phaser.Math.Between(18, 40),
         [0xffd23f, 0x27b6a5, 0xf05f73, 0x8fd6ff][index % 4],
         0.82
-      );
+      )
+        .setAngle(Phaser.Math.Between(-25, 25))
+        .setDepth(1);
+
+      this.tweens.add({
+        targets: confetti,
+        y: confetti.y + Phaser.Math.Between(70, 150),
+        angle: confetti.angle + Phaser.Math.Between(110, 260),
+        alpha: { from: 0.42, to: 0.92 },
+        duration: Phaser.Math.Between(1500, 2700),
+        delay: Phaser.Math.Between(0, 900),
+        repeat: -1,
+        yoyo: true,
+        ease: 'Sine.easeInOut'
+      });
     }
 
-    this.add
+    const titleText = this.add
       .text(640, 64, `Happy ${gameProfile.birthdayAge}th Birthday, ${gameProfile.playerName}!`, {
         fontFamily: 'Arial, sans-serif',
         fontSize: '44px',
@@ -47,12 +61,56 @@ export class FinaleScene extends Phaser.Scene {
         align: 'center',
         wordWrap: { width: 1100 }
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(6);
 
-    this.add.rectangle(346, 370, 390, 420, 0xffffff, 0.1).setStrokeStyle(5, 0xffd23f, 0.8);
-    this.add
+    this.tweens.add({
+      targets: titleText,
+      y: 74,
+      duration: 1150,
+      repeat: -1,
+      yoyo: true,
+      ease: 'Sine.easeInOut'
+    });
+
+    const championCard = this.add
+      .rectangle(346, 370, 390, 420, 0xffffff, 0.1)
+      .setStrokeStyle(5, 0xffd23f, 0.8)
+      .setDepth(2);
+    const victoryCat = this.add
       .image(346, 330, 'catVictory')
-      .setDisplaySize(assetsByKey.catVictory.width * 1.48, assetsByKey.catVictory.height * 1.48);
+      .setDisplaySize(assetsByKey.catVictory.width * 1.48, assetsByKey.catVictory.height * 1.48)
+      .setDepth(3);
+    const catBaseScaleX = victoryCat.scaleX;
+    const catBaseScaleY = victoryCat.scaleY;
+
+    this.tweens.add({
+      targets: championCard,
+      scaleX: 1.012,
+      scaleY: 1.012,
+      duration: 900,
+      repeat: -1,
+      yoyo: true,
+      ease: 'Sine.easeInOut'
+    });
+    this.tweens.add({
+      targets: victoryCat,
+      y: victoryCat.y - 18,
+      scaleX: catBaseScaleX * 1.04,
+      scaleY: catBaseScaleY * 1.04,
+      duration: 850,
+      repeat: -1,
+      yoyo: true,
+      ease: 'Sine.easeInOut'
+    });
+    this.tweens.add({
+      targets: victoryCat,
+      angle: { from: -2.5, to: 2.5 },
+      duration: 1250,
+      repeat: -1,
+      yoyo: true,
+      ease: 'Sine.easeInOut'
+    });
 
     this.add
       .text(346, 548, 'Cat Beast Champion', {
@@ -63,7 +121,34 @@ export class FinaleScene extends Phaser.Scene {
         align: 'center',
         wordWrap: { width: 340 }
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(4);
+
+    if (this.textures.exists('star')) {
+      const starPositions = [
+        { x: 184, y: 194 },
+        { x: 506, y: 214 },
+        { x: 180, y: 506 },
+        { x: 504, y: 488 },
+        { x: 346, y: 150 }
+      ];
+
+      starPositions.forEach((position, index) => {
+        const star = this.add.image(position.x, position.y, 'star').setDisplaySize(54, 54).setDepth(4).setAlpha(0.9);
+        this.tweens.add({
+          targets: star,
+          y: star.y - 12,
+          angle: index % 2 === 0 ? 18 : -18,
+          scaleX: star.scaleX * 1.12,
+          scaleY: star.scaleY * 1.12,
+          duration: 720 + index * 95,
+          delay: index * 120,
+          repeat: -1,
+          yoyo: true,
+          ease: 'Sine.easeInOut'
+        });
+      });
+    }
 
     const lines = [
       `Final score: ${formatScore(totalScore)}`,
@@ -75,7 +160,7 @@ export class FinaleScene extends Phaser.Scene {
       `Total course time: ${formatTime(totalTime)}`
     ];
 
-    this.add.rectangle(820, 376, 500, 420, 0xffffff, 0.12).setStrokeStyle(5, 0xffffff, 0.76);
+    this.add.rectangle(820, 376, 500, 420, 0xffffff, 0.12).setStrokeStyle(5, 0xffffff, 0.76).setDepth(2);
     this.add
       .text(820, 194, 'Final Scorecard', {
         fontFamily: 'Arial, sans-serif',
@@ -84,7 +169,8 @@ export class FinaleScene extends Phaser.Scene {
         fontStyle: '900',
         align: 'center'
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(4);
 
     this.add
       .text(610, 246, lines.join('\n'), {
@@ -96,7 +182,8 @@ export class FinaleScene extends Phaser.Scene {
         lineSpacing: 10,
         wordWrap: { width: 420 }
       })
-      .setOrigin(0, 0);
+      .setOrigin(0, 0)
+      .setDepth(4);
 
     this.createButton(820, 636, 'Run the Course Again', () => {
       this.registry.set('scoreSummaries', []);
@@ -108,7 +195,8 @@ export class FinaleScene extends Phaser.Scene {
     const background = this.add
       .rectangle(x, y, 360, 68, 0xffd23f)
       .setStrokeStyle(5, 0xffffff)
-      .setInteractive({ useHandCursor: true });
+      .setInteractive({ useHandCursor: true })
+      .setDepth(5);
 
     this.add
       .text(x, y, label, {
@@ -117,7 +205,18 @@ export class FinaleScene extends Phaser.Scene {
         color: '#102033',
         fontStyle: '900'
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(6);
+
+    this.tweens.add({
+      targets: background,
+      scaleX: 1.035,
+      scaleY: 1.08,
+      duration: 900,
+      repeat: -1,
+      yoyo: true,
+      ease: 'Sine.easeInOut'
+    });
 
     background.on('pointerdown', onPress);
   }
