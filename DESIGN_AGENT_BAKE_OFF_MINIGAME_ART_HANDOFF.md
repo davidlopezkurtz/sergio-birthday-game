@@ -9,6 +9,14 @@ The art should make the micro-game feel physical, fast, and readable on iPad lan
 
 ## Gameplay Concept To Support
 
+### Current Implementation Update
+The bake-off has moved from one static recipe order to a short active rush:
+- 2-3 escalating judge tickets appear in sequence.
+- The player taps station buttons to build each ticket on the prep tray.
+- Finished treats move to a judge rack.
+- Each Serve step now has a timing meter; tapping Serve while the marker is in the green zone preserves the best multiplier.
+- The final math question still decides the score multiplier, but it is now framed as full-batch topping math after the active ticket rush.
+
 ### Core Loop
 1. A judge order ticket appears.
 2. A pastry tray or counter lane presents the item being built.
