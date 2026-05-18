@@ -191,6 +191,7 @@ export class TitleScene extends Phaser.Scene {
     });
 
     this.registry.set('scoreSummaries', []);
+    this.registry.set('runSeed', `run-${Date.now()}-${Phaser.Math.Between(1000, 9999)}`);
     this.time.delayedCall(230, () => this.scene.start('PlayScene', { levelIndex: 0 }));
   }
 

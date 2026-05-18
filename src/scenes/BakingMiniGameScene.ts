@@ -34,6 +34,7 @@ export interface BakingMiniGameSceneData {
   levelTitle?: string;
   completion?: LevelCompletionSnapshot;
   transitionId?: string;
+  randomSeed?: string | number;
 }
 
 interface StationDisplay {
@@ -155,7 +156,9 @@ export class BakingMiniGameScene extends Phaser.Scene {
 
   init(data: BakingMiniGameSceneData): void {
     this.station = data.station;
-    this.order = buildBakeRushOrder(data.station, data.stationNumber);
+    this.order = buildBakeRushOrder(data.station, data.stationNumber, {
+      seed: data.randomSeed ?? data.transitionId ?? `${data.station.id}-${data.stationNumber}`
+    });
     this.eventKey = data.eventKey ?? '';
     this.transitionId = data.transitionId ?? '';
     this.levelTitle = data.levelTitle ?? data.station.label;
@@ -869,7 +872,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
 
     this.ticketTitleText?.setText('Multiplier Math');
     this.ticketProgressText?.setText('Final judge question');
-    this.ticketRecipeText?.setText(`Batch goal:\n${this.order.treatCount} treats x ${this.order.perTreat} toppings`);
+    this.ticketRecipeText?.setText(`Batch goal:\n${this.order.mathSummary}`);
     this.promptBack?.setPosition(PROMPT_CENTER_X, PROMPT_MATH_Y).setDisplaySize(760, 76).setDepth(23);
     this.promptText?.setPosition(PROMPT_CENTER_X, PROMPT_MATH_Y).setDepth(24);
     this.promptText?.setText(this.order.mathPrompt);
@@ -943,7 +946,7 @@ export class BakingMiniGameScene extends Phaser.Scene {
         })
         .setOrigin(0.5);
       const cardText = this.add
-        .text(0, 32, 'moves', {
+        .text(0, 32, this.order.answerUnit, {
           fontFamily: 'Arial, sans-serif',
           fontSize: '15px',
           color: '#2f4056',

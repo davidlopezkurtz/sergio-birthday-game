@@ -2,6 +2,8 @@ import { calculateBakeMultiplier } from './baking';
 import type { BakingIngredient, BakingStationDefinition, BakingStationResult } from '../types';
 
 export type BakeRushStep = 'base' | BakingIngredient | 'serve';
+type RandomSource = () => number;
+type BakeRushMathKind = 'totalMoves' | 'perTreat' | 'treatCount';
 
 export interface BakeRushTicket {
   id: string;
@@ -18,17 +20,135 @@ export interface BakeRushOrder {
   perTreat: number;
   mathIngredient: BakingIngredient;
   mathPrompt: string;
+  mathSummary: string;
+  answerUnit: string;
   answer: number;
   choices: number[];
 }
 
-export const buildBakeRushOrder = (station: BakingStationDefinition, stationNumber: number): BakeRushOrder => {
-  const safeRecipe: BakingIngredient[] = station.recipe.length > 0 ? station.recipe : ['frosting'];
-  const treatCount = Math.max(2, stationNumber + 2);
+export interface BakeRushOrderOptions {
+  seed?: string | number;
+  rng?: RandomSource;
+}
+
+const ALL_INGREDIENTS: BakingIngredient[] = ['frosting', 'sprinkles', 'berry', 'candle'];
+
+const hashSeed = (seed: string | number): number => {
+  const text = String(seed);
+  let hash = 2166136261;
+
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
+};
+
+export const createBakeRushSeededRandom = (seed: string | number): RandomSource => {
+  let state = hashSeed(seed) || 1;
+
+  return () => {
+    state += 0x6d2b79f5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+const randInt = (min: number, max: number, rng: RandomSource): number =>
+  Math.floor(rng() * (max - min + 1)) + min;
+
+const pickOne = <T>(items: T[], rng: RandomSource): T => items[Math.floor(rng() * items.length)];
+
+const shuffled = <T>(items: T[], rng: RandomSource): T[] => {
+  const copy = [...items];
+
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(rng() * (index + 1));
+    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+  }
+
+  return copy;
+};
+
+const uniqueIngredients = (ingredients: BakingIngredient[]): BakingIngredient[] =>
+  ingredients.filter((ingredient, index) => ingredients.indexOf(ingredient) === index);
+
+const difficultyForStation = (stationNumber: number): 1 | 2 | 3 =>
+  Math.min(3, Math.max(1, stationNumber)) as 1 | 2 | 3;
+
+const buildRecipeVariant = (
+  station: BakingStationDefinition,
+  stationNumber: number,
+  rng: RandomSource
+): BakingIngredient[] => {
+  const difficulty = difficultyForStation(stationNumber);
+  const preferred = uniqueIngredients(station.recipe);
+  const pool = uniqueIngredients([...preferred, ...ALL_INGREDIENTS]);
+  const recipeLength = difficulty === 1 ? 3 : difficulty === 2 ? randInt(3, 4, rng) : 4;
+
+  return shuffled(pool, rng).slice(0, recipeLength);
+};
+
+const buildTreatCount = (stationNumber: number, rng: RandomSource): number => {
+  const difficulty = difficultyForStation(stationNumber);
+
+  if (difficulty === 1) {
+    return randInt(3, 4, rng);
+  }
+
+  return randInt(4, 5, rng);
+};
+
+const buildMathKind = (stationNumber: number, rng: RandomSource): BakeRushMathKind => {
+  const difficulty = difficultyForStation(stationNumber);
+  const kinds: BakeRushMathKind[] = difficulty === 1 ? ['totalMoves', 'perTreat'] : ['totalMoves', 'perTreat', 'treatCount'];
+
+  return pickOne(kinds, rng);
+};
+
+const formatIngredient = (ingredient: BakingIngredient): string => {
+  switch (ingredient) {
+    case 'frosting':
+      return 'frosting';
+    case 'sprinkles':
+      return 'sprinkle topping';
+    case 'berry':
+      return 'berry topping';
+    case 'candle':
+      return 'candle topping';
+  }
+};
+
+export const buildBakeRushOrder = (
+  station: BakingStationDefinition,
+  stationNumber: number,
+  options: BakeRushOrderOptions = {}
+): BakeRushOrder => {
+  const rng = options.rng ?? createBakeRushSeededRandom(options.seed ?? `${station.id}-${stationNumber}`);
+  const safeRecipe = buildRecipeVariant(station, stationNumber, rng);
+  const treatCount = buildTreatCount(stationNumber, rng);
   const perTreat = safeRecipe.length;
-  const mathIngredient = safeRecipe[(stationNumber - 1) % safeRecipe.length];
-  const answer = treatCount * perTreat;
-  const tickets = buildBakeRushTickets(safeRecipe, stationNumber);
+  const mathIngredient = pickOne(safeRecipe, rng);
+  const mathKind = buildMathKind(stationNumber, rng);
+  const totalMoves = treatCount * perTreat;
+  const tickets = buildBakeRushTickets(safeRecipe, stationNumber, { rng });
+  let answer = totalMoves;
+  let answerUnit = 'moves';
+  let mathPrompt = `Each treat needs ${perTreat} topping moves. ${treatCount} treats need how many moves?`;
+  const mathSummary = `${treatCount} treats x ${perTreat} toppings`;
+
+  if (mathKind === 'perTreat') {
+    answer = perTreat;
+    answerUnit = 'each';
+    mathPrompt = `${totalMoves} ${formatIngredient(mathIngredient)} moves are shared across ${treatCount} treats. How many per treat?`;
+  } else if (mathKind === 'treatCount') {
+    answer = treatCount;
+    answerUnit = 'treats';
+    mathPrompt = `You have ${totalMoves} topping moves and use ${perTreat} per treat. How many treats can you finish?`;
+  }
 
   return {
     steps: ['base', ...safeRecipe, 'serve'],
@@ -37,15 +157,27 @@ export const buildBakeRushOrder = (station: BakingStationDefinition, stationNumb
     treatCount,
     perTreat,
     mathIngredient,
-    mathPrompt: `Each treat needs ${perTreat} topping moves. ${treatCount} treats need how many moves?`,
+    mathPrompt,
+    mathSummary,
+    answerUnit,
     answer,
-    choices: buildBakeRushChoices(answer, [answer - treatCount, answer + treatCount, answer + perTreat, answer - perTreat])
+    choices: buildBakeRushChoices(
+      answer,
+      [answer - treatCount, answer + treatCount, answer + perTreat, answer - perTreat, totalMoves],
+      rng
+    )
   };
 };
 
-export const buildBakeRushTickets = (recipe: BakingIngredient[], stationNumber: number): BakeRushTicket[] => {
+export const buildBakeRushTickets = (
+  recipe: BakingIngredient[],
+  stationNumber: number,
+  options: BakeRushOrderOptions = {}
+): BakeRushTicket[] => {
+  const rng = options.rng ?? createBakeRushSeededRandom(`tickets-${stationNumber}-${recipe.join('-')}`);
   const safeRecipe: BakingIngredient[] = recipe.length > 0 ? recipe : ['frosting'];
-  const ticketCount = Math.min(3, Math.max(2, stationNumber + 1));
+  const maxTickets = Math.min(4, Math.max(2, stationNumber + 1));
+  const ticketCount = randInt(2, maxTickets, rng);
 
   return Array.from({ length: ticketCount }, (_, index) => {
     const isFinalTicket = index === ticketCount - 1;
@@ -61,7 +193,7 @@ export const buildBakeRushTickets = (recipe: BakingIngredient[], stationNumber: 
   });
 };
 
-export const buildBakeRushChoices = (answer: number, candidates: number[]): number[] => {
+export const buildBakeRushChoices = (answer: number, candidates: number[], rng?: RandomSource): number[] => {
   const choices = [answer];
 
   for (const candidate of candidates) {
@@ -83,7 +215,7 @@ export const buildBakeRushChoices = (answer: number, candidates: number[]): numb
     fallbackOffset += 1;
   }
 
-  return choices;
+  return rng ? shuffled(choices, rng) : choices;
 };
 
 export const expectedBakeRushStep = (order: BakeRushOrder, stepIndex: number): BakeRushStep | undefined =>

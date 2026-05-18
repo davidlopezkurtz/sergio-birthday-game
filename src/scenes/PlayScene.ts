@@ -231,6 +231,7 @@ export class PlayScene extends Phaser.Scene {
   private bumpFeedbackStartedAt = Number.NEGATIVE_INFINITY;
   private bumpFeedbackUntil = Number.NEGATIVE_INFINITY;
   private powerTraveling = false;
+  private runSeed = '';
 
   constructor() {
     super('PlayScene');
@@ -242,6 +243,7 @@ export class PlayScene extends Phaser.Scene {
     this.startX = this.level.startX ?? DEFAULT_CAT_START_X;
     this.worldWidth = this.level.worldWidth ?? this.level.trackLength + 800;
     this.worldHeight = this.level.worldHeight ?? DEFAULT_WORLD_HEIGHT;
+    this.runSeed = this.ensureRunSeed();
     this.elapsedMs = 0;
     this.hintsUsed = 0;
     this.obstacleHits = 0;
@@ -1300,6 +1302,24 @@ export class PlayScene extends Phaser.Scene {
     });
   }
 
+  private ensureRunSeed(): string {
+    const existingSeed = this.registry.get('runSeed');
+    if (typeof existingSeed === 'string' && existingSeed.length > 0) {
+      return existingSeed;
+    }
+
+    const seed = `run-${Date.now()}-${Phaser.Math.Between(1000, 9999)}`;
+    this.registry.set('runSeed', seed);
+    return seed;
+  }
+
+  private nextBakeOffSeed(): string {
+    const key = `bakeOffAttempt:${this.level.id}`;
+    const attempt = ((this.registry.get(key) as number | undefined) ?? 0) + 1;
+    this.registry.set(key, attempt);
+    return `${this.runSeed}:${this.level.id}:${attempt}`;
+  }
+
   private launchEndBakeOff(): void {
     this.activeBakingStation = true;
     const actionScore = this.currentScore();
@@ -1333,7 +1353,8 @@ export class PlayScene extends Phaser.Scene {
           actionScore,
           levelTitle: this.level.title,
           completion,
-          transitionId
+          transitionId,
+          randomSeed: this.nextBakeOffSeed()
         });
         this.scene.bringToTop('BakingMiniGameScene');
       } catch (error) {

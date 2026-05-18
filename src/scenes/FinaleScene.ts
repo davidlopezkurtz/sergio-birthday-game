@@ -187,6 +187,7 @@ export class FinaleScene extends Phaser.Scene {
 
     this.createButton(820, 636, 'Run the Course Again', () => {
       this.registry.set('scoreSummaries', []);
+      this.registry.set('runSeed', `run-${Date.now()}-${Phaser.Math.Between(1000, 9999)}`);
       this.scene.start('PlayScene', { levelIndex: 0 });
     });
   }

@@ -19,19 +19,39 @@ const station: BakingStationDefinition = {
 
 describe('bake rush helpers', () => {
   it('builds a tray order with base, recipe ingredients, serve, and ingredient math', () => {
-    const order = buildBakeRushOrder(station, 2);
+    const order = buildBakeRushOrder(station, 2, { seed: 'tray-order' });
+    const ingredientSteps = order.steps.slice(1, -1);
 
-    expect(order.steps).toEqual(['base', 'frosting', 'sprinkles', 'berry', 'serve']);
-    expect(order.tickets.map((ticket) => ticket.steps)).toEqual([
-      ['base', 'frosting', 'serve'],
-      ['base', 'frosting', 'sprinkles', 'serve'],
-      ['base', 'frosting', 'sprinkles', 'berry', 'serve']
-    ]);
-    expect(order.treatCount).toBe(4);
-    expect(order.perTreat).toBe(3);
-    expect(order.answer).toBe(12);
-    expect(order.choices).toContain(12);
+    expect(order.steps[0]).toBe('base');
+    expect(order.steps.at(-1)).toBe('serve');
+    expect(ingredientSteps.length).toBeGreaterThanOrEqual(3);
+    expect(ingredientSteps.length).toBeLessThanOrEqual(4);
+    expect(new Set(ingredientSteps).size).toBe(ingredientSteps.length);
+    expect(order.tickets.length).toBeGreaterThanOrEqual(2);
+    expect(order.tickets.length).toBeLessThanOrEqual(3);
+    expect(order.tickets.at(-1)?.steps).toEqual(order.steps);
+    expect(order.treatCount).toBeGreaterThanOrEqual(4);
+    expect(order.treatCount).toBeLessThanOrEqual(5);
+    expect(order.perTreat).toBe(order.recipe.length);
+    expect(order.answer).toBeGreaterThan(0);
+    expect(order.choices).toHaveLength(4);
+    expect(order.choices).toContain(order.answer);
     expect(new Set(order.choices).size).toBe(4);
+    expect(order.mathPrompt.length).toBeGreaterThan(20);
+    expect(order.mathSummary).toContain('treats');
+    expect(order.answerUnit.length).toBeGreaterThan(0);
+  });
+
+  it('keeps seeded bake-off orders deterministic while allowing varied playthroughs', () => {
+    const first = buildBakeRushOrder(station, 3, { seed: 'same-run' });
+    const second = buildBakeRushOrder(station, 3, { seed: 'same-run' });
+    const variants = ['same-run', 'next-run', 'third-run'].map((seed) => {
+      const order = buildBakeRushOrder(station, 3, { seed });
+      return `${order.steps.join(',')}|${order.mathPrompt}|${order.answer}`;
+    });
+
+    expect(second).toEqual(first);
+    expect(new Set(variants).size).toBeGreaterThan(1);
   });
 
   it('builds short escalating judge tickets for active station play', () => {
@@ -56,20 +76,22 @@ describe('bake rush helpers', () => {
       perfectBonus: 0
     };
 
-    const order = buildBakeRushOrder(levelTwoStation, 2);
+    const order = buildBakeRushOrder(levelTwoStation, 2, { seed: 'duplicate-candidates' });
 
-    expect(order.answer).toBe(16);
+    expect(order.answer).toBeGreaterThan(0);
     expect(order.choices).toHaveLength(4);
-    expect(order.choices).toContain(16);
+    expect(order.choices).toContain(order.answer);
     expect(new Set(order.choices).size).toBe(4);
   });
 
   it('validates the expected station step', () => {
-    const order = buildBakeRushOrder(station, 1);
+    const order = buildBakeRushOrder(station, 1, { seed: 'expected-step' });
+    const firstIngredient = order.steps[1];
 
     expect(expectedBakeRushStep(order, 0)).toBe('base');
-    expect(isCorrectBakeRushStep(order, 1, 'frosting')).toBe(true);
-    expect(isCorrectBakeRushStep(order, 1, 'berry')).toBe(false);
+    expect(isCorrectBakeRushStep(order, 1, firstIngredient)).toBe(true);
+    expect(isCorrectBakeRushStep(order, order.steps.length - 1, 'serve')).toBe(true);
+    expect(isCorrectBakeRushStep(order, 1, 'serve')).toBe(false);
   });
 
   it('converts prep mistakes, time expiry, and math into multiplier results', () => {
