@@ -12,10 +12,10 @@ The game is designed for iPad Safari in landscape orientation, with desktop keyb
 
 ## Controls
 
-- Move left/right: hold on-screen `Back` / `Run`, arrow keys, or `A` / `D`
-- Jump/climb up: on-screen `Jump`, `ArrowUp`, or `W`
+- Move left/right: hold on-screen `Left` / `Right`, arrow keys, or `A` / `D`
+- Jump/climb up: on-screen `Up`, `ArrowUp`, or `W`
 - Down/crawl: on-screen `Down`, `ArrowDown`, or `S`
-- Ladders: hold `Jump`/`ArrowUp`/`W` near a ladder to climb up; hold `Down`/`ArrowDown`/`S` near a ladder to climb down
+- Ladders: hold `Up`/`ArrowUp`/`W` near a ladder to climb up; hold `Down`/`ArrowDown`/`S` near a ladder to climb down
 - Power: on-screen `Power` or `Space`
 - Start: `Space`, `Enter`, or the start button
 - Bake-off games: tap the large ingredient and answer buttons

@@ -96,6 +96,12 @@ const ACTION_CLEAR_BEHIND = 180;
 const HUD_HEIGHT = 62;
 const HUD_DEPTH = 20;
 const CONTROL_Y = 666;
+const DPAD_LEFT_X = 76;
+const DPAD_CENTER_X = 154;
+const DPAD_RIGHT_X = 232;
+const DPAD_UP_Y = 586;
+const DPAD_BOTTOM_Y = 666;
+const DPAD_BUTTON_SIZE = 78;
 const CONTROL_ALPHA_TOUCH = 0.5;
 const CONTROL_ALPHA_DESKTOP = 0.16;
 const CONTROL_ALPHA_PRESSED = 0.88;
@@ -734,7 +740,7 @@ export class PlayScene extends Phaser.Scene {
     this.keyPower = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.keySlide = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.S);
 
-    this.add.rectangle(640, 672, 1280, 96, 0x102033, 0.12).setScrollFactor(0).setDepth(29);
+    this.add.rectangle(640, 642, 1280, 156, 0x102033, 0.12).setScrollFactor(0).setDepth(29);
     this.powerButtonGlow = this.add
       .circle(1120, CONTROL_Y, 42, 0xffd23f, 0.16)
       .setScrollFactor(0)
@@ -750,10 +756,10 @@ export class PlayScene extends Phaser.Scene {
       ease: 'Sine.easeInOut'
     });
 
-    this.createMoveButton(86, CONTROL_Y, 88, 'Back', 0x2f4056, -1);
-    this.createMoveButton(196, CONTROL_Y, 96, 'Run', 0x38a16d, 1);
-    this.createVerticalActionButton(888, CONTROL_Y, 92, 'Duck', 0xf05f73, 1);
-    this.createVerticalActionButton(998, CONTROL_Y, 96, 'Jump', 0x27b6a5, -1);
+    this.createVerticalActionButton(DPAD_CENTER_X, DPAD_UP_Y, DPAD_BUTTON_SIZE, 'Up', 0x27b6a5, -1);
+    this.createMoveButton(DPAD_LEFT_X, DPAD_BOTTOM_Y, DPAD_BUTTON_SIZE, 'Left', 0x2f4056, -1);
+    this.createVerticalActionButton(DPAD_CENTER_X, DPAD_BOTTOM_Y, DPAD_BUTTON_SIZE, 'Down', 0xf05f73, 1);
+    this.createMoveButton(DPAD_RIGHT_X, DPAD_BOTTOM_Y, DPAD_BUTTON_SIZE, 'Right', 0x38a16d, 1);
     this.createTouchButton(1120, CONTROL_Y, 96, 'Power', 0xffd23f, () => this.usePower(), '#102033', 66);
     this.installGlobalTouchControlFallback();
   }
@@ -2356,7 +2362,7 @@ export class PlayScene extends Phaser.Scene {
 
   private startCountdown(): void {
     this.countdownText = this.add
-      .text(640, 350, 'Hold Run', {
+      .text(640, 350, 'Hold Right', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '58px',
         color: '#102033',
@@ -2368,7 +2374,7 @@ export class PlayScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(35);
 
-    this.time.delayedCall(900, () => this.countdownText?.setText('Hold Run'));
+    this.time.delayedCall(900, () => this.countdownText?.setText('Hold Right'));
     this.time.delayedCall(COUNTDOWN_MS, () => {
       this.startRunFromInput(false);
     });
