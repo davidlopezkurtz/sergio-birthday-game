@@ -5,6 +5,7 @@ import { levels } from '../src/data/levels';
 const LOW_BARRIER_SURFACE_OFFSET = 142;
 const MIN_CRAWL_RUNWAY_FROM_LADDER = 260;
 const MIN_POWER_BADGE_DISTANCE_FROM_FINISH_Y = 150;
+const MIN_LADDER_LANDING_SUPPORT = 120;
 
 describe('level authoring', () => {
   it('places explicit power badges before each power obstacle', () => {
@@ -54,6 +55,34 @@ describe('level authoring', () => {
         }
 
         expect(Math.abs(obstacle.x - ladderOnSameSurface.x)).toBeGreaterThanOrEqual(MIN_CRAWL_RUNWAY_FROM_LADDER);
+      }
+    }
+  });
+
+  it('keeps ladder landings supported by enough floor width', () => {
+    for (const level of levels) {
+      for (const ladder of level.ladders ?? []) {
+        for (const surfaceY of [ladder.yTop, ladder.yBottom]) {
+          if (surfaceY === level.groundY) {
+            continue;
+          }
+
+          const platform = level.platforms.find((candidate) => candidate.y === surfaceY);
+          expect(platform, `${level.id} ${ladder.id} has a platform at ${surfaceY}`).toBeTruthy();
+
+          if (!platform) {
+            continue;
+          }
+
+          const leftSupport = ladder.x - (platform.x - platform.width / 2);
+          const rightSupport = platform.x + platform.width / 2 - ladder.x;
+          expect(leftSupport, `${level.id} ${ladder.id} left landing support`).toBeGreaterThanOrEqual(
+            MIN_LADDER_LANDING_SUPPORT
+          );
+          expect(rightSupport, `${level.id} ${ladder.id} right landing support`).toBeGreaterThanOrEqual(
+            MIN_LADDER_LANDING_SUPPORT
+          );
+        }
       }
     }
   });

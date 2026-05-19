@@ -90,6 +90,7 @@ const LADDER_EXIT_LOCKOUT_MS = 520;
 const COUNTDOWN_MS = 1400;
 const JUMP_ACTION_GRACE_MS = 1150;
 const SLIDE_ACTION_GRACE_MS = 950;
+const SLIDE_TAP_DURATION_MS = 680;
 const POWER_ACTION_GRACE_MS = 1100;
 const ACTION_CLEAR_AHEAD = 100;
 const ACTION_CLEAR_BEHIND = 180;
@@ -245,6 +246,7 @@ export class PlayScene extends Phaser.Scene {
   private countdownText?: Phaser.GameObjects.Text;
   private touchMoveDirection = 0;
   private touchClimbDirection = 0;
+  private activeSlidePointerIds = new Set<number>();
   private touchControlButtons: TouchControlButton[] = [];
   private activeMovePointerId?: number;
   private activeClimbPointerId?: number;
@@ -254,6 +256,7 @@ export class PlayScene extends Phaser.Scene {
   private climbing = false;
   private lastJumpAt = Number.NEGATIVE_INFINITY;
   private lastSlideAt = Number.NEGATIVE_INFINITY;
+  private slideAutoReleaseAt = Number.NEGATIVE_INFINITY;
   private lastPowerAt = Number.NEGATIVE_INFINITY;
   private ladderGrabLockedUntil = Number.NEGATIVE_INFINITY;
   private bumpFeedbackStartedAt = Number.NEGATIVE_INFINITY;
@@ -311,6 +314,7 @@ export class PlayScene extends Phaser.Scene {
     this.hasMoved = false;
     this.touchMoveDirection = 0;
     this.touchClimbDirection = 0;
+    this.activeSlidePointerIds.clear();
     this.touchControlButtons = [];
     this.activeMovePointerId = undefined;
     this.activeClimbPointerId = undefined;
@@ -320,6 +324,7 @@ export class PlayScene extends Phaser.Scene {
     this.climbing = false;
     this.lastJumpAt = Number.NEGATIVE_INFINITY;
     this.lastSlideAt = Number.NEGATIVE_INFINITY;
+    this.slideAutoReleaseAt = Number.NEGATIVE_INFINITY;
     this.lastPowerAt = Number.NEGATIVE_INFINITY;
     this.ladderGrabLockedUntil = Number.NEGATIVE_INFINITY;
     this.bumpFeedbackStartedAt = Number.NEGATIVE_INFINITY;
@@ -420,6 +425,7 @@ export class PlayScene extends Phaser.Scene {
     this.applyClimbMovement(delta);
     this.applyHorizontalMovement(delta);
     this.applyManualGravity(delta);
+    this.updateSlideHoldState();
     this.animateCatMotion(time);
 
     this.checkObstacleOverlaps();
@@ -969,7 +975,8 @@ export class PlayScene extends Phaser.Scene {
 
     if (control.kind === 'vertical' && control.direction) {
       this.startRunFromInput();
-      if (this.canUseLadder()) {
+      const shouldUseLadder = control.id !== 'duck' && this.canUseLadder();
+      if (shouldUseLadder) {
         this.touchClimbDirection = control.direction;
         this.activeClimbPointerId = pointerId;
         this.startClimb(control.direction);
@@ -979,7 +986,8 @@ export class PlayScene extends Phaser.Scene {
       if (control.direction < 0) {
         this.jump();
       } else {
-        this.startSlide();
+        this.activeSlidePointerIds.add(pointerId);
+        this.startSlide({ allowLadder: control.id !== 'duck' });
       }
       return;
     }
@@ -998,6 +1006,8 @@ export class PlayScene extends Phaser.Scene {
       this.activeClimbPointerId = undefined;
     }
 
+    this.activeSlidePointerIds.delete(pointerId);
+
     this.touchControlButtons.forEach((control) => this.setTouchControlPressed(control, false));
     this.updatePowerAvailabilityVisual();
   }
@@ -1005,6 +1015,7 @@ export class PlayScene extends Phaser.Scene {
   private releaseAllTouchControls(): void {
     this.touchMoveDirection = 0;
     this.touchClimbDirection = 0;
+    this.activeSlidePointerIds.clear();
     this.activeMovePointerId = undefined;
     this.activeClimbPointerId = undefined;
     this.touchControlButtons.forEach((control) => this.setTouchControlPressed(control, false));
@@ -1043,7 +1054,7 @@ export class PlayScene extends Phaser.Scene {
     this.controlDebugText.setText([
       `run=${this.runStarted} moved=${this.hasMoved}`,
       `move=${this.touchMoveDirection} climb=${this.touchClimbDirection}`,
-      `slide=${this.sliding} climbState=${this.climbing}`,
+      `slide=${this.sliding} held=${this.activeSlidePointerIds.size} climbState=${this.climbing}`,
       `vy=${Math.round(this.verticalVelocity)} held=${this.heldPower ?? 'none'} ready=${this.powerReady}`
     ]);
   }
@@ -1051,6 +1062,8 @@ export class PlayScene extends Phaser.Scene {
   private handleKeyboardInput(): void {
     const wantsUp = this.isDown(this.cursors?.up) || this.isDown(this.keyJumpW);
     const wantsDown = this.isDown(this.cursors?.down) || this.isDown(this.keySlide);
+    const upJustPressed = this.justDown(this.cursors?.up) || this.justDown(this.keyJumpW);
+    const downJustPressed = this.justDown(this.cursors?.down) || this.justDown(this.keySlide);
     const wantsHorizontal =
       this.isDown(this.cursors?.left) ||
       this.isDown(this.cursors?.right) ||
@@ -1066,12 +1079,12 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
 
-    if (this.justDown(this.cursors?.up) || this.justDown(this.keyJumpW)) {
+    if (upJustPressed) {
       this.jump();
     }
 
-    if (this.justDown(this.cursors?.down) || this.justDown(this.keySlide)) {
-      this.startSlide();
+    if (wantsDown && (!this.sliding || downJustPressed)) {
+      this.startSlide({ nudge: downJustPressed || !this.sliding });
     }
 
     if (this.justDown(this.keyPower)) {
@@ -1107,34 +1120,52 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
-  private startSlide(): void {
+  private startSlide(options: { nudge?: boolean; allowLadder?: boolean } = {}): void {
     if (!this.runStarted) {
       this.startRunFromInput();
     }
 
-    if (this.canUseLadder()) {
+    if ((options.allowLadder ?? true) && this.canUseLadder()) {
       this.startClimb(1);
       return;
     }
 
     this.startRunClock();
     this.lastSlideAt = this.elapsedMs;
+    this.slideAutoReleaseAt = Math.max(this.slideAutoReleaseAt, this.elapsedMs + SLIDE_TAP_DURATION_MS);
     this.resolveNearbyObstaclesForAction('slide');
     this.collectNearbyThrustersForAction('slide');
+    const shouldNudge = options.nudge ?? true;
 
     if (this.sliding) {
-      this.cat.x = Phaser.Math.Clamp(this.cat.x + 12, this.startX, this.worldWidth - 40);
+      if (shouldNudge) {
+        this.cat.x = Phaser.Math.Clamp(this.cat.x + 12, this.startX, this.worldWidth - 40);
+      }
       return;
     }
 
     this.sliding = true;
-    this.cat.x = Phaser.Math.Clamp(this.cat.x + 22, this.startX, this.worldWidth - 40);
+    if (shouldNudge) {
+      this.cat.x = Phaser.Math.Clamp(this.cat.x + 22, this.startX, this.worldWidth - 40);
+    }
     this.setCatPose('catSlide');
+  }
 
-    this.time.delayedCall(680, () => {
-      this.sliding = false;
-      this.restoreMovementCatPose();
-    });
+  private updateSlideHoldState(): void {
+    if (!this.sliding) {
+      return;
+    }
+
+    const keyboardHoldingDuck = this.isDown(this.cursors?.down) || this.isDown(this.keySlide);
+    const touchHoldingDuck = this.activeSlidePointerIds.size > 0;
+    const tapSlideStillActive = this.elapsedMs <= this.slideAutoReleaseAt;
+
+    if (touchHoldingDuck || keyboardHoldingDuck || tapSlideStillActive) {
+      return;
+    }
+
+    this.sliding = false;
+    this.restoreMovementCatPose();
   }
 
   private usePower(): void {
@@ -1366,8 +1397,10 @@ export class PlayScene extends Phaser.Scene {
   private launchLevelClearSequence(): void {
     this.touchMoveDirection = 0;
     this.touchClimbDirection = 0;
+    this.activeSlidePointerIds.clear();
     this.climbing = false;
     this.sliding = false;
+    this.slideAutoReleaseAt = Number.NEGATIVE_INFINITY;
     this.verticalVelocity = 0;
     this.onGround = true;
     this.setCatPose('catVictory');

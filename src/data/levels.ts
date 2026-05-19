@@ -9,6 +9,8 @@ const FLOOR_2_Y = 1300;
 const FLOOR_3_Y = 920;
 const FLOOR_4_Y = 540;
 const TOP_Y = 250;
+const MAIN_FLOOR_WIDTH = 1160;
+const TOP_FLOOR_WIDTH = 920;
 
 const MID_GROUND_TO_1 = (GROUND_Y + FLOOR_1_Y) / 2;
 const MID_1_TO_2 = (FLOOR_1_Y + FLOOR_2_Y) / 2;
@@ -49,11 +51,11 @@ export const levels: LevelDefinition[] = [
     groundY: GROUND_Y,
     finish: finishAt(1050, 'Top Yarn Bell'),
     platforms: [
-      { id: 'yy-floor-1', x: 700, y: FLOOR_1_Y, width: 1050, label: 'Yarn Yard Floor 2' },
-      { id: 'yy-floor-2', x: 580, y: FLOOR_2_Y, width: 1050, label: 'Kitten Climb Floor' },
-      { id: 'yy-floor-3', x: 700, y: FLOOR_3_Y, width: 1050, label: 'Ribbon Rail Floor' },
-      { id: 'yy-floor-4', x: 580, y: FLOOR_4_Y, width: 1050, label: 'High Yarn Floor' },
-      { id: 'yy-top', x: 820, y: TOP_Y, width: 720, label: 'Top Yarn Bell' }
+      { id: 'yy-floor-1', x: 700, y: FLOOR_1_Y, width: MAIN_FLOOR_WIDTH, label: 'Yarn Yard Floor 2' },
+      { id: 'yy-floor-2', x: 580, y: FLOOR_2_Y, width: MAIN_FLOOR_WIDTH, label: 'Kitten Climb Floor' },
+      { id: 'yy-floor-3', x: 700, y: FLOOR_3_Y, width: MAIN_FLOOR_WIDTH, label: 'Ribbon Rail Floor' },
+      { id: 'yy-floor-4', x: 580, y: FLOOR_4_Y, width: MAIN_FLOOR_WIDTH, label: 'High Yarn Floor' },
+      { id: 'yy-top', x: 820, y: TOP_Y, width: TOP_FLOOR_WIDTH, label: 'Top Yarn Bell' }
     ],
     ladders: [
       { id: 'yy-ladder-1', x: 1050, yTop: FLOOR_1_Y, yBottom: GROUND_Y, label: 'Climb' },
@@ -112,11 +114,11 @@ export const levels: LevelDefinition[] = [
     groundY: GROUND_Y,
     finish: finishAt(1050, 'Cake Stand Summit'),
     platforms: [
-      { id: 'ff-floor-1', x: 700, y: FLOOR_1_Y, width: 1050, label: 'Sugar Step Floor' },
-      { id: 'ff-floor-2', x: 580, y: FLOOR_2_Y, width: 1050, label: 'Cupcake Balcony' },
-      { id: 'ff-floor-3', x: 700, y: FLOOR_3_Y, width: 1050, label: 'Mixer Mezzanine' },
-      { id: 'ff-floor-4', x: 580, y: FLOOR_4_Y, width: 1050, label: 'Donut Rail Floor' },
-      { id: 'ff-top', x: 820, y: TOP_Y, width: 720, label: 'Cake Stand Summit' }
+      { id: 'ff-floor-1', x: 700, y: FLOOR_1_Y, width: MAIN_FLOOR_WIDTH, label: 'Sugar Step Floor' },
+      { id: 'ff-floor-2', x: 580, y: FLOOR_2_Y, width: MAIN_FLOOR_WIDTH, label: 'Cupcake Balcony' },
+      { id: 'ff-floor-3', x: 700, y: FLOOR_3_Y, width: MAIN_FLOOR_WIDTH, label: 'Mixer Mezzanine' },
+      { id: 'ff-floor-4', x: 580, y: FLOOR_4_Y, width: MAIN_FLOOR_WIDTH, label: 'Donut Rail Floor' },
+      { id: 'ff-top', x: 820, y: TOP_Y, width: TOP_FLOOR_WIDTH, label: 'Cake Stand Summit' }
     ],
     ladders: [
       { id: 'ff-ladder-1', x: 1040, yTop: FLOOR_1_Y, yBottom: GROUND_Y, label: 'Climb' },
@@ -174,11 +176,11 @@ export const levels: LevelDefinition[] = [
     groundY: GROUND_Y,
     finish: finishAt(1080, 'Birthday Crown'),
     platforms: [
-      { id: 'bt-floor-1', x: 700, y: FLOOR_1_Y, width: 1050, label: 'Candle Step Floor' },
-      { id: 'bt-floor-2', x: 580, y: FLOOR_2_Y, width: 1050, label: 'Fraction Perch Floor' },
-      { id: 'bt-floor-3', x: 700, y: FLOOR_3_Y, width: 1050, label: 'Confetti Catwalk' },
-      { id: 'bt-floor-4', x: 580, y: FLOOR_4_Y, width: 1050, label: 'Summit Approach' },
-      { id: 'bt-top', x: 820, y: TOP_Y, width: 720, label: 'Birthday Crown' }
+      { id: 'bt-floor-1', x: 700, y: FLOOR_1_Y, width: MAIN_FLOOR_WIDTH, label: 'Candle Step Floor' },
+      { id: 'bt-floor-2', x: 580, y: FLOOR_2_Y, width: MAIN_FLOOR_WIDTH, label: 'Fraction Perch Floor' },
+      { id: 'bt-floor-3', x: 700, y: FLOOR_3_Y, width: MAIN_FLOOR_WIDTH, label: 'Confetti Catwalk' },
+      { id: 'bt-floor-4', x: 580, y: FLOOR_4_Y, width: MAIN_FLOOR_WIDTH, label: 'Summit Approach' },
+      { id: 'bt-top', x: 820, y: TOP_Y, width: TOP_FLOOR_WIDTH, label: 'Birthday Crown' }
     ],
     ladders: [
       { id: 'bt-ladder-1', x: 1050, yTop: FLOOR_1_Y, yBottom: GROUND_Y, label: 'Climb' },
