@@ -60,6 +60,20 @@ interface PowerBadgeObject {
   collected: boolean;
 }
 
+type TouchControlKind = 'move' | 'vertical' | 'power';
+
+interface TouchControlButton {
+  id: string;
+  x: number;
+  y: number;
+  size: number;
+  kind: TouchControlKind;
+  direction?: -1 | 1;
+  circle: Phaser.GameObjects.Arc;
+  baseAlpha: number;
+  onPress?: () => void;
+}
+
 const DEFAULT_GROUND_Y = 560;
 const DEFAULT_CAT_START_X = 160;
 const DEFAULT_WORLD_HEIGHT = 720;
@@ -222,6 +236,11 @@ export class PlayScene extends Phaser.Scene {
   private countdownText?: Phaser.GameObjects.Text;
   private touchMoveDirection = 0;
   private touchClimbDirection = 0;
+  private touchControlButtons: TouchControlButton[] = [];
+  private activeMovePointerId?: number;
+  private activeClimbPointerId?: number;
+  private lastTouchControlPressKey = '';
+  private lastTouchControlPressAt = Number.NEGATIVE_INFINITY;
   private facingDirection: -1 | 1 = 1;
   private climbing = false;
   private lastJumpAt = Number.NEGATIVE_INFINITY;
@@ -283,6 +302,11 @@ export class PlayScene extends Phaser.Scene {
     this.hasMoved = false;
     this.touchMoveDirection = 0;
     this.touchClimbDirection = 0;
+    this.touchControlButtons = [];
+    this.activeMovePointerId = undefined;
+    this.activeClimbPointerId = undefined;
+    this.lastTouchControlPressKey = '';
+    this.lastTouchControlPressAt = Number.NEGATIVE_INFINITY;
     this.facingDirection = 1;
     this.climbing = false;
     this.lastJumpAt = Number.NEGATIVE_INFINITY;
@@ -731,6 +755,7 @@ export class PlayScene extends Phaser.Scene {
     this.createVerticalActionButton(888, CONTROL_Y, 92, 'Duck', 0xf05f73, 1);
     this.createVerticalActionButton(998, CONTROL_Y, 96, 'Jump', 0x27b6a5, -1);
     this.createTouchButton(1120, CONTROL_Y, 96, 'Power', 0xffd23f, () => this.usePower(), '#102033', 66);
+    this.installGlobalTouchControlFallback();
   }
 
   private createTouchButton(
@@ -758,30 +783,25 @@ export class PlayScene extends Phaser.Scene {
       .setOrigin(0.5);
     const hitZone = this.add.zone(0, 0, size, size).setInteractive({ useHandCursor: true });
 
+    const control = this.registerTouchControl({
+      id: label.toLowerCase(),
+      x,
+      y,
+      size,
+      kind: 'power',
+      circle,
+      baseAlpha,
+      onPress
+    });
+
     container.add([circle, text, hitZone]);
     if (label === 'Power') {
       this.powerButtonCircle = circle;
     }
-    hitZone.on('pointerdown', () => {
-      circle.setAlpha(CONTROL_ALPHA_PRESSED);
-      circle.setScale(1.04);
-      onPress();
-    });
-    hitZone.on('pointerup', () => {
-      circle.setAlpha(baseAlpha);
-      circle.setScale(1);
-      this.updatePowerAvailabilityVisual();
-    });
-    hitZone.on('pointerout', () => {
-      circle.setAlpha(baseAlpha);
-      circle.setScale(1);
-      this.updatePowerAvailabilityVisual();
-    });
-    hitZone.on('pointerupoutside', () => {
-      circle.setAlpha(baseAlpha);
-      circle.setScale(1);
-      this.updatePowerAvailabilityVisual();
-    });
+    hitZone.on('pointerdown', (pointer: Phaser.Input.Pointer) => this.pressTouchControl(control, pointer.id));
+    hitZone.on('pointerup', (pointer: Phaser.Input.Pointer) => this.releaseTouchControl(pointer.id));
+    hitZone.on('pointerout', (pointer: Phaser.Input.Pointer) => this.releaseTouchControl(pointer.id));
+    hitZone.on('pointerupoutside', (pointer: Phaser.Input.Pointer) => this.releaseTouchControl(pointer.id));
   }
 
   private createVerticalActionButton(
@@ -808,37 +828,22 @@ export class PlayScene extends Phaser.Scene {
       .setOrigin(0.5);
     const hitZone = this.add.zone(0, 0, size, size).setInteractive({ useHandCursor: true });
 
-    const beginAction = () => {
-      this.startRunFromInput();
-      if (this.canUseLadder()) {
-        this.touchClimbDirection = direction;
-        this.startClimb(direction);
-        circle.setAlpha(CONTROL_ALPHA_PRESSED);
-        circle.setScale(1.04);
-        return;
-      }
-
-      circle.setAlpha(CONTROL_ALPHA_PRESSED);
-      circle.setScale(1.04);
-      if (direction < 0) {
-        this.jump();
-      } else {
-        this.startSlide();
-      }
-    };
-    const endAction = () => {
-      if (this.touchClimbDirection === direction) {
-        this.touchClimbDirection = 0;
-      }
-      circle.setAlpha(baseAlpha);
-      circle.setScale(1);
-    };
+    const control = this.registerTouchControl({
+      id: label.toLowerCase(),
+      x,
+      y,
+      size,
+      kind: 'vertical',
+      direction,
+      circle,
+      baseAlpha
+    });
 
     container.add([circle, text, hitZone]);
-    hitZone.on('pointerdown', beginAction);
-    hitZone.on('pointerup', endAction);
-    hitZone.on('pointerout', endAction);
-    hitZone.on('pointerupoutside', endAction);
+    hitZone.on('pointerdown', (pointer: Phaser.Input.Pointer) => this.pressTouchControl(control, pointer.id));
+    hitZone.on('pointerup', (pointer: Phaser.Input.Pointer) => this.releaseTouchControl(pointer.id));
+    hitZone.on('pointerout', (pointer: Phaser.Input.Pointer) => this.releaseTouchControl(pointer.id));
+    hitZone.on('pointerupoutside', (pointer: Phaser.Input.Pointer) => this.releaseTouchControl(pointer.id));
   }
 
   private createMoveButton(
@@ -865,25 +870,149 @@ export class PlayScene extends Phaser.Scene {
       .setOrigin(0.5);
     const hitZone = this.add.zone(0, 0, size, size).setInteractive({ useHandCursor: true });
 
-    const beginMove = () => {
-      this.startRunFromInput();
-      this.touchMoveDirection = direction;
-      circle.setAlpha(CONTROL_ALPHA_PRESSED);
-      circle.setScale(1.04);
-    };
-    const endMove = () => {
-      if (this.touchMoveDirection === direction) {
-        this.touchMoveDirection = 0;
-      }
-      circle.setAlpha(baseAlpha);
-      circle.setScale(1);
-    };
+    const control = this.registerTouchControl({
+      id: label.toLowerCase(),
+      x,
+      y,
+      size,
+      kind: 'move',
+      direction,
+      circle,
+      baseAlpha
+    });
 
     container.add([circle, text, hitZone]);
-    hitZone.on('pointerdown', beginMove);
-    hitZone.on('pointerup', endMove);
-    hitZone.on('pointerout', endMove);
-    hitZone.on('pointerupoutside', endMove);
+    hitZone.on('pointerdown', (pointer: Phaser.Input.Pointer) => this.pressTouchControl(control, pointer.id));
+    hitZone.on('pointerup', (pointer: Phaser.Input.Pointer) => this.releaseTouchControl(pointer.id));
+    hitZone.on('pointerout', (pointer: Phaser.Input.Pointer) => this.releaseTouchControl(pointer.id));
+    hitZone.on('pointerupoutside', (pointer: Phaser.Input.Pointer) => this.releaseTouchControl(pointer.id));
+  }
+
+  private registerTouchControl(control: TouchControlButton): TouchControlButton {
+    this.touchControlButtons.push(control);
+    return control;
+  }
+
+  private installGlobalTouchControlFallback(): void {
+    this.input.off('pointerdown', this.handleGlobalTouchControlDown, this);
+    this.input.off('pointerup', this.handleGlobalTouchControlUp, this);
+    this.input.off('pointerupoutside', this.handleGlobalTouchControlUp, this);
+    this.input.off('gameout', this.releaseAllTouchControls, this);
+
+    this.input.on('pointerdown', this.handleGlobalTouchControlDown, this);
+    this.input.on('pointerup', this.handleGlobalTouchControlUp, this);
+    this.input.on('pointerupoutside', this.handleGlobalTouchControlUp, this);
+    this.input.on('gameout', this.releaseAllTouchControls, this);
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.off('pointerdown', this.handleGlobalTouchControlDown, this);
+      this.input.off('pointerup', this.handleGlobalTouchControlUp, this);
+      this.input.off('pointerupoutside', this.handleGlobalTouchControlUp, this);
+      this.input.off('gameout', this.releaseAllTouchControls, this);
+    });
+  }
+
+  private handleGlobalTouchControlDown(pointer: Phaser.Input.Pointer): void {
+    const control = this.touchControlAt(pointer.x, pointer.y);
+
+    if (!control) {
+      return;
+    }
+
+    pointer.event?.preventDefault();
+    this.pressTouchControl(control, pointer.id);
+  }
+
+  private handleGlobalTouchControlUp(pointer: Phaser.Input.Pointer): void {
+    this.releaseTouchControl(pointer.id);
+  }
+
+  private touchControlAt(x: number, y: number): TouchControlButton | undefined {
+    let closest: { control: TouchControlButton; distance: number } | undefined;
+
+    for (const control of this.touchControlButtons) {
+      const halfSize = Math.max(control.size, 108) / 2;
+      const dx = Math.abs(x - control.x);
+      const dy = Math.abs(y - control.y);
+
+      if (dx > halfSize || dy > halfSize) {
+        continue;
+      }
+
+      const distance = Phaser.Math.Distance.Between(x, y, control.x, control.y);
+      if (!closest || distance < closest.distance) {
+        closest = { control, distance };
+      }
+    }
+
+    return closest?.control;
+  }
+
+  private pressTouchControl(control: TouchControlButton, pointerId = -1): void {
+    const pressKey = `${pointerId}:${control.id}`;
+    const now = this.time.now;
+    if (this.lastTouchControlPressKey === pressKey && now - this.lastTouchControlPressAt < 50) {
+      return;
+    }
+    this.lastTouchControlPressKey = pressKey;
+    this.lastTouchControlPressAt = now;
+
+    this.setTouchControlPressed(control, true);
+
+    if (control.kind === 'move' && control.direction) {
+      this.startRunFromInput();
+      this.touchMoveDirection = control.direction;
+      this.activeMovePointerId = pointerId;
+      return;
+    }
+
+    if (control.kind === 'vertical' && control.direction) {
+      this.startRunFromInput();
+      if (this.canUseLadder()) {
+        this.touchClimbDirection = control.direction;
+        this.activeClimbPointerId = pointerId;
+        this.startClimb(control.direction);
+        return;
+      }
+
+      if (control.direction < 0) {
+        this.jump();
+      } else {
+        this.startSlide();
+      }
+      return;
+    }
+
+    control.onPress?.();
+  }
+
+  private releaseTouchControl(pointerId = -1): void {
+    if (this.activeMovePointerId === pointerId) {
+      this.touchMoveDirection = 0;
+      this.activeMovePointerId = undefined;
+    }
+
+    if (this.activeClimbPointerId === pointerId) {
+      this.touchClimbDirection = 0;
+      this.activeClimbPointerId = undefined;
+    }
+
+    this.touchControlButtons.forEach((control) => this.setTouchControlPressed(control, false));
+    this.updatePowerAvailabilityVisual();
+  }
+
+  private releaseAllTouchControls(): void {
+    this.touchMoveDirection = 0;
+    this.touchClimbDirection = 0;
+    this.activeMovePointerId = undefined;
+    this.activeClimbPointerId = undefined;
+    this.touchControlButtons.forEach((control) => this.setTouchControlPressed(control, false));
+    this.updatePowerAvailabilityVisual();
+  }
+
+  private setTouchControlPressed(control: TouchControlButton, pressed: boolean): void {
+    control.circle.setAlpha(pressed ? CONTROL_ALPHA_PRESSED : control.baseAlpha);
+    control.circle.setScale(pressed ? 1.04 : 1);
   }
 
   private createControlDebugOverlay(): void {
