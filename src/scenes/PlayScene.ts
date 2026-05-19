@@ -102,6 +102,9 @@ const DPAD_RIGHT_X = 232;
 const DPAD_UP_Y = 586;
 const DPAD_BOTTOM_Y = 666;
 const DPAD_BUTTON_SIZE = 78;
+const ACTION_DUCK_X = 888;
+const ACTION_JUMP_X = 998;
+const ACTION_BUTTON_SIZE = 92;
 const CONTROL_ALPHA_TOUCH = 0.5;
 const CONTROL_ALPHA_DESKTOP = 0.16;
 const CONTROL_ALPHA_PRESSED = 0.88;
@@ -550,13 +553,11 @@ export class PlayScene extends Phaser.Scene {
   private createPlatforms(): void {
     this.platforms = [];
     const platformKey = this.platformAssetKey();
-    const floorEdgeKey = this.floorEdgeAssetKey();
     const isTower = this.levelThemeKey() === 'tower';
 
     for (const platform of this.level.platforms) {
       const platformHeight = assetsByKey[platformKey].height;
-      const edgeHeight = this.textures.exists(floorEdgeKey) ? Math.min(52, assetsByKey[floorEdgeKey].height) : 12;
-      this.add.rectangle(platform.x, platform.y + platformHeight + 14, platform.width + 36, 28, 0x102033, 0.2).setDepth(2);
+      this.add.rectangle(platform.x, platform.y + platformHeight - 6, platform.width + 36, 24, 0x102033, 0.18).setDepth(2);
       if (isTower) {
         this.add.rectangle(platform.x, platform.y + 34, platform.width + 34, 70, 0x7e3fa5, 0.78).setDepth(2.8);
         this.add.rectangle(platform.x, platform.y + 76, platform.width + 34, 30, 0x3a1856, 0.58).setDepth(2.9);
@@ -570,11 +571,6 @@ export class PlayScene extends Phaser.Scene {
           platformKey
         )
         .setDepth(3);
-      const edge = this.textures.exists(floorEdgeKey)
-        ? this.add
-            .tileSprite(platform.x, platform.y + 8, platform.width + 26, edgeHeight, floorEdgeKey)
-            .setDepth(5)
-        : undefined;
       this.add
         .rectangle(
           platform.x,
@@ -588,11 +584,8 @@ export class PlayScene extends Phaser.Scene {
       if (isTower) {
         this.add.rectangle(platform.x, platform.y + 10, platform.width + 6, 4, 0xffffff, 0.36).setDepth(6.1);
       }
-      if (!edge) {
-        this.add.rectangle(platform.x, platform.y + 4, platform.width, edgeHeight, 0xffffff, 0.7).setDepth(4);
-      }
 
-      this.platforms.push({ definition: platform, body, edge });
+      this.platforms.push({ definition: platform, body });
     }
   }
 
@@ -760,6 +753,8 @@ export class PlayScene extends Phaser.Scene {
     this.createMoveButton(DPAD_LEFT_X, DPAD_BOTTOM_Y, DPAD_BUTTON_SIZE, 'Left', 0x2f4056, -1);
     this.createVerticalActionButton(DPAD_CENTER_X, DPAD_BOTTOM_Y, DPAD_BUTTON_SIZE, 'Down', 0xf05f73, 1);
     this.createMoveButton(DPAD_RIGHT_X, DPAD_BOTTOM_Y, DPAD_BUTTON_SIZE, 'Right', 0x38a16d, 1);
+    this.createVerticalActionButton(ACTION_DUCK_X, CONTROL_Y, ACTION_BUTTON_SIZE, 'Duck', 0xf05f73, 1);
+    this.createVerticalActionButton(ACTION_JUMP_X, CONTROL_Y, ACTION_BUTTON_SIZE, 'Jump', 0x27b6a5, -1);
     this.createTouchButton(1120, CONTROL_Y, 96, 'Power', 0xffd23f, () => this.usePower(), '#102033', 66);
     this.installGlobalTouchControlFallback();
   }
